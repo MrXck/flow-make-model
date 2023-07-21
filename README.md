@@ -1,19 +1,10 @@
 # workflow
 
-## Project setup
-```
+## 简介
+使用 logicflow + vue2 + ant design vue 制作的可视化拖拽模型制作
+
+## 安装依赖
 yarn install
-```
 
-### Compiles and hot-reloads for development
-```
+## 运行
 yarn serve
-```
-
-### Compiles and minifies for production
-```
-yarn build
-```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
