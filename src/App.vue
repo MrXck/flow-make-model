@@ -231,6 +231,92 @@
         </a-row>
       </div>
     </a-drawer>
+
+    <a-drawer
+        :title="config.title"
+        placement="bottom"
+        height="400"
+        :closable="true"
+        :visible="draw.related"
+        @close="onClose"
+        :zIndex="10"
+        :destroyOnClose="true"
+    >
+      <p>数据关联配置</p>
+      <div v-if="draw.related">
+        <div v-if="nowOption.relatedRules.length !== 0">
+          <a-button @click="saveRelatedRules">保存配置</a-button>
+          <a-button style="margin-left: 10px" v-show="!nowOption.preview" @click="nowOption.preview = true">预览
+          </a-button>
+          <a-button style="margin-left: 10px" v-show="nowOption.preview" @click="nowOption.preview = false">取消预览
+          </a-button>
+          <a-select
+                    :default-value="nowOption.saveTableId !== '' ? nowOption.tableNames[nowOption.tableIds.indexOf(nowOption.saveTableId)] : '请选择保留数据的表'"
+                    style="width: 300px;margin-left: 10px">
+            <a-select-option v-for="(item, index) in nowOption.tableNames"
+                             :key="index" :value="index"
+                             @click="handleSaveTableChange(index)">
+              {{ item }}
+            </a-select-option>
+          </a-select>
+          <div class="filter-item">
+            <span v-for="item in nowOption.tableNames" style="display: inline-block;width: 300px">{{ item }}</span>
+            <span style="display: inline-block;width: 300px"></span>
+          </div>
+          <div class="filter-item" v-for="(rowItem, rowIndex) in nowOption.relatedRules">
+            <a-select v-for="(selectItem, selectIndex) in nowOption.tableIds" :key="selectIndex"
+                      :default-value="rowItem !== '' ? rowItem[selectItem] : '请选择关联字段'"
+                      style="width: 300px;margin-left: 10px">
+              <a-select-option v-for="(item, index) in xlsxData[selectItem].columnList"
+                               :key="index" :value="item"
+                               @click="handleRelatedChange(rowIndex, selectItem, item)">
+                {{ item }}
+              </a-select-option>
+            </a-select>
+
+            <a-select :default-value="rowItem.relatedRule !== '' ? rowItem.relatedRule : '请选择关联规则'"
+                      style="width: 300px;margin-left: 10px">
+              <a-select-option v-for="(item, index) in relatedConfig.relatedItem" :key="index" :value="index"
+                               @click="handleRelatedChange(rowIndex, 'relatedRule', item.value)">
+                {{ item.desc }}
+              </a-select-option>
+            </a-select>
+
+            <a-button style="margin-left: 10px" @click="addRelatedRule" v-if="rowIndex === 0">添加配置</a-button>
+            <a-button style="margin-left: 10px" @click="removeRelatedRule(rowIndex)" v-if="rowIndex !== 0">删除配置
+            </a-button>
+          </div>
+        </div>
+        <div v-if="nowOption.relatedRules.length === 0">
+          <a-button @click="addRelatedRule">添加配置</a-button>
+        </div>
+
+        <a-row v-if="draw.related && nowOption.preview">
+          <p>关联后</p>
+          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
+            <a-menu slot="overlay">
+              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
+                <a-checkbox :checked="column.show"
+                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
+                  {{ column.title }}
+                </a-checkbox>
+              </a-menu-item>
+            </a-menu>
+            <a-button style="margin-left: 8px"> 筛选列
+              <a-icon type="down"/>
+            </a-button>
+          </a-dropdown>
+          <a-table
+              style="margin-top: 10px"
+              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+              :data-source="relatedData(nowOption.deduplicateRules, xlsxData[nowOption.id].data, nowOption.saveTableId)"
+              :pagination="xlsxData[nowOption.id].pagination"
+              bordered
+              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
+          </a-table>
+        </a-row>
+      </div>
+    </a-drawer>
   </div>
 </template>
 
@@ -253,6 +339,7 @@ export default {
         upload: false,
         dataFilter: false,
         deduplicate: false,
+        related: false,
       },
       nowOption: {
         id: 0,
@@ -295,6 +382,18 @@ export default {
             value: '.match'
           },
         ]
+      },
+      relatedConfig: {
+        relatedItem: [
+          {
+            desc: '等于',
+            value: ' == '
+          },
+          {
+            desc: '不等于',
+            value: ' != '
+          }
+        ]
       }
     }
   },
@@ -309,7 +408,7 @@ export default {
       const isExcel = file.type === 'application/vnd.ms-excel' || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.type === 'text/csv'
       if (!isExcel) {
         this.$message.error('只能上传 xlsx xls csv格式')
-        return
+        return new Promise((resolve, reject) => reject())
       }
       const data = await this.readFile(file)
       const workbook = read(data, {type: 'binary', cellDates: true})
@@ -346,6 +445,7 @@ export default {
             },
           }
       )
+      return new Promise((resolve, reject) => reject())
     },
     readFile(file) {
       return new Promise((resolve) => {
@@ -457,6 +557,49 @@ export default {
       })
       return list
     },
+    addRelatedRule() {
+      let obj = {}
+      for (let i = 0; i < this.nowOption.tableIds.length; i++) {
+        obj[this.nowOption.tableIds[i]] = ''
+      }
+      obj.relatedRule = ''
+      this.nowOption.relatedRules.push(obj)
+    },
+    saveRelatedRules() {
+      const properties = this.lf.getProperties(this.nowOption.id)
+      properties.relatedRules = this.nowOption.relatedRules
+      properties.saveTableId = this.nowOption.saveTableId
+      properties.tableIds = this.nowOption.tableIds
+      this.lf.setProperties(this.nowOption.id, properties)
+      this.saveXlsxData(this.nowOption.id, this.relatedData(this.nowOption.relatedRules, this.xlsxData[this.nowOption.id].data, this.nowOption.saveTableId))
+    },
+    handleRelatedChange(rowIndex, type, item) {
+      this.nowOption.relatedRules[rowIndex][type] = item
+    },
+    removeRelatedRule(index) {
+      this.nowOption.relatedRules.splice(index, 1)
+    },
+    relatedData(relatedRule, dataList, saveTableId) {
+      let list = [...dataList]
+      console.log(relatedRule, saveTableId)
+
+
+
+      for (let i = 0; i < relatedRule.length; i++) {
+        list = list.filter((data, index, arr) => {
+          let saveTableData = data[saveTableId]
+
+        })
+      }
+
+      return list
+    },
+    handleSaveTableChange(index) {
+      this.notPreview()
+      let id = this.nowOption.tableIds[index]
+      this.$set(this.nowOption, 'saveTableId', id)
+      this.$set(this.xlsxData, this.nowOption.id, Object.assign({}, this.xlsxData[id]))
+    },
     saveXlsxData(nodeId, dataList) {
       this.$set(this.xlsxData[nodeId], 'data', dataList)
     },
@@ -481,7 +624,6 @@ export default {
         return
       }
 
-
       let inComingNodes = lf.getNodeIncomingNode(nodeId)
       if (inComingNodes.length === 0 && lf.getNodeDataById(nodeId).properties.type !== 'upload') {
         this.$message.error('请正确配置流程')
@@ -490,7 +632,6 @@ export default {
       if (inComingNodes.length === 0) {
         return
       }
-
 
       for (let i = 0; i < inComingNodes.length; i++) {
         if (!(inComingNodes[i].id in xlsxData)) {
@@ -511,9 +652,8 @@ export default {
         data.data = resultData
         this.$set(this.xlsxData, nodeId, data)
       } else if (inComingNodes.length > 1) {
-        console.log('合并数据', nodeId, inComingNodes.map(data => data.id))
+        console.log('关联数据', nodeId, inComingNodes.map(data => data.id))
       }
-
     },
   },
   mounted() {
@@ -642,12 +782,12 @@ export default {
       },
       {
         type: 'rect',
-        label: '合并',
-        text: '合并',
+        label: '关联',
+        text: '关联',
         icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAEFVwZaAAAABGdBTUEAALGPC/xhBQAAAqlJREFUOBF9VM9rE0EUfrMJNUKLihGbpLGtaCOIR8VjQMGDePCgCCIiCNqzCAp2MyYUCXhUtF5E0D+g1t48qAd7CCLqQUQKEWkStcEfVGlLdp/fm3aW2QQdyLzf33zz5m2IsAZ9XhDpyaaIZkTS4ASzK41TFao88GuJ3hsr2pAbipHxuSYyKRugagICGANkfFnNh3HeE2N0b3nN2cgnpcictw5veJIzxmDamSlxxQZicq/mflxhbaH8BLRbuRwNtZp0JAhoplVRUdzmCe/vO27wFuuA3S5qXruGdboy5/PRGFsbFGKo/haRtQHIrM83bVeTrOgNhZReWaYGnE4aUQgTJNvijJFF4jQ8BxJE5xfKatZWmZcTQ+BVgh7s8SgPlCkcec4mGTmieTP4xd7PcpIEg1TX6gdeLW8rTVMVLVvb7ctXoH0Cydl2QOPJBG21STE5OsnbweVYzAnD3A7PVILuY0yiiyDwSm2g441r6rMSgp6iK42yqroI2QoXeJVeA+YeZSa47gZdXaZWQKTrG93rukk/l2Al6Kzh5AZEl7dDQy+JjgFahQjRopSxPbrbvK7GRe9ePWBo1wcU7sYrFZtavXALwGw/7Dnc50urrHJuTPSoO2IMV3gUQGNg87IbSOIY9BpiT9HV7FCZ94nPXb3MSnwHn/FFFE1vG6DTby+r31KAkUktB3Qf6ikUPWxW1BkXSPQeMHHiW0+HAd2GelJsZz1OJegCxqzl+CLVHa/IibuHeJ1HAKzhuDR+ymNaRFM+4jU6UWKXorRmbyqkq/D76FffevwdCp+jN3UAN/C9JRVTDuOxC/oh+EdMnqIOrlYteKSfadVRGLJFJPSB/ti/6K8f0CNymg/iH2gO/f0DwE0yjAFO6l8JaR5j0VPwPwfaYHqOqrCI319WzwhwzNW/aQAAAABJRU5ErkJggg==',
         className: 'import_icon',
         properties: {
-          type: 'merge',
+          type: 'related',
         }
       },
       {
@@ -726,7 +866,7 @@ export default {
           "x": 1020,
           "y": 240,
           "properties": {
-            "type": "merge"
+            "type": "related"
           },
           "text": {
             "x": 1020,
@@ -810,7 +950,7 @@ export default {
           "x": 800,
           "y": 420,
           "properties": {
-            "type": "merge"
+            "type": "related"
           },
           "text": {
             "x": 800,
@@ -1296,6 +1436,7 @@ export default {
         this.$message.error('请配置数据源')
         return
       }
+
       if (inComingNodes.length > 0) {
         for (let i = 0; i < inComingNodes.length; i++) {
           if (!(inComingNodes[i].id in this.xlsxData)) {
@@ -1332,6 +1473,22 @@ export default {
           this.$set(this.nowOption, 'deduplicateRules', [...data.data.properties.deduplicateRules])
         } else {
           this.$set(this.nowOption, 'deduplicateRules', [])
+        }
+
+      } else if (type === 'related') {
+        this.$set(this.nowOption, 'tableIds', inComingNodes.sort((a, b) => a.id - b.id).map(data => data.id))
+        this.$set(this.nowOption, 'tableNames', inComingNodes.sort((a, b) => a.id - b.id).map(data => data.text.value))
+
+        if ('relatedRules' in data.data.properties) {
+          this.$set(this.nowOption, 'relatedRules', [...data.data.properties.relatedRules])
+        } else {
+          this.$set(this.nowOption, 'relatedRules', [])
+        }
+
+        if ('saveTableId' in data.data.properties) {
+          this.$set(this.nowOption, 'saveTableId', data.data.properties.saveTableId)
+        } else {
+          this.$set(this.nowOption, 'saveTableId', '')
         }
 
       }
