@@ -84,7 +84,8 @@
 
             <a-input style="width: 300px" v-model="nowOption.filterRules[rowIndex].start" @input="notPreview"/>
 
-            <a-button style="margin-left: 10px" @click="addFilterRule">添加配置</a-button>
+            <a-button style="margin-left: 10px" @click="addFilterRule" v-if="rowIndex === 0">添加配置</a-button>
+            <a-button style="margin-left: 10px" @click="removeFilterRule(rowIndex)" v-if="rowIndex !== 0">删除配置</a-button>
           </div>
         </div>
         <div v-if="nowOption.filterRules.length === 0">
@@ -166,14 +167,6 @@ export default {
       },
       nowOption: {
         id: 0,
-        filterRules: [
-          {
-            start: '',
-            filterRule: '',
-            column: '',
-            type: 'and'
-          }
-        ],
         preview: false
       },
       lf: null,
@@ -285,6 +278,10 @@ export default {
         column: '',
         type: 'and'
       })
+      console.log(this.nowOption)
+    },
+    removeFilterRule(index) {
+      this.nowOption.filterRules.splice(index, 1)
     },
     saveFilterRules() {
       const properties = this.lf.getProperties(this.nowOption.id)
@@ -335,7 +332,6 @@ export default {
       return list
     },
     notPreview() {
-      // this.$set(this.nowOption, 'preview', false)
       this.nowOption.preview = false
     },
     executeFlow(lf, nodeId, xlsxData) {
@@ -350,25 +346,6 @@ export default {
       for (let i = 0; i < inComing.length; i++) {
         console.log(inComing[i].id in xlsxData, inComing[i], xlsxData)
       }
-
-      // if (nodeId in xlsxData) {
-      //   // 下一步
-      //   let outGoingNodes = lf.getNodeOutgoingNode(nodeId)
-      //   for (let i = 0; i < outGoingNodes.length; i++) {
-      //     if (lf.getNodeDataById(outGoingNodes[i].id).properties.type === 'merge') {
-      //       this.executeBefore(lf, outGoingNodes[i].id, xlsxData)
-      //
-      //       // 合并数据
-      //     } else {
-      //       // 执行子节点的规则
-      //       this.execute(lf, outGoingNodes[i].id, xlsxData)
-      //
-      //     }
-      //   }
-      // } else {
-      //   // 向父节点寻找运行
-      //
-      // }
     },
     executeBefore(lf, nodeId, xlsxData) {
       if (nodeId in xlsxData) {
@@ -1109,7 +1086,8 @@ export default {
       this.config.title = data.data.text.value
       this.draw[data.data.properties.type] = true
       this.nowOption = {
-        id: data.data.id
+        id: data.data.id,
+        preview: false
       }
 
       if (type === 'dataFilter') {
@@ -1118,16 +1096,20 @@ export default {
         }
 
         if ('filterRules' in data.data.properties) {
-          this.nowOption.filterRules = data.data.properties.filterRules
+          this.$set(this.nowOption, 'filterRules', [...data.data.properties.filterRules])
         } else {
-          this.nowOption.filterRules = []
+          this.$set(this.nowOption, 'filterRules', [])
         }
+
       } else if (type === 'deduplicate') {
+        for (let i = 0; i < inComingNodes.length; i++) {
+          this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[inComingNodes[i].id]))
+        }
 
         if ('deduplicateRules' in data.data.properties) {
-          this.nowOption.deduplicateRules = data.data.properties.deduplicateRules
+          this.$set(this.nowOption, 'deduplicateRules', [...data.data.properties.deduplicateRules])
         } else {
-          this.nowOption.deduplicateRules = []
+          this.$set(this.nowOption, 'deduplicateRules', [])
         }
 
       }
