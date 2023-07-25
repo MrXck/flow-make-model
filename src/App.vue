@@ -25,27 +25,27 @@
         </a-button>
       </a-upload>
       <a-row v-if="draw.upload && nowOption.id in xlsxData">
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-            <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-                <a-checkbox :checked="column.show"
-                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                  {{ column.title }}
-                </a-checkbox>
-              </a-menu-item>
-            </a-menu>
-            <a-button style="margin-left: 8px"> 筛选列
-              <a-icon type="down"/>
-            </a-button>
-          </a-dropdown>
-          <a-table
-              style="margin-top: 10px"
-              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="xlsxData[nowOption.id].data"
-              :pagination="xlsxData[nowOption.id].pagination"
-              bordered
-              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-          </a-table>
+        <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
+          <a-menu slot="overlay">
+            <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
+              <a-checkbox :checked="column.show"
+                          @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
+                {{ column.title }}
+              </a-checkbox>
+            </a-menu-item>
+          </a-menu>
+          <a-button style="margin-left: 8px"> 筛选列
+            <a-icon type="down"/>
+          </a-button>
+        </a-dropdown>
+        <a-table
+            style="margin-top: 10px"
+            :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+            :data-source="xlsxData[nowOption.id].data"
+            :pagination="xlsxData[nowOption.id].pagination"
+            bordered
+            @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
+        </a-table>
       </a-row>
     </a-drawer>
 
@@ -70,14 +70,14 @@
           <div class="filter-item" v-for="(rowItem, rowIndex) in nowOption.filterRules">
             <a-select :default-value="rowItem.column !== '' ? rowItem.column : '请选择字段'" style="width: 300px">
               <a-select-option v-for="(item, index) in xlsxData[nowOption.id].columnList" :key="index" :value="item"
-                               @click="handleChange(rowIndex, 'column', item)">
+                               @click="handleFilterRuleChange(rowIndex, 'column', item)">
                 {{ item }}
               </a-select-option>
             </a-select>
             <a-select :default-value="rowItem.filterRule !== '' ? rowItem.filterRule : '请选择筛选规则'"
                       style="width: 300px;margin: 0 10px">
               <a-select-option v-for="(item, index) in filterConfig.filterItem" :key="index" :value="index"
-                               @click="handleChange(rowIndex, 'filterRule', item.value)">
+                               @click="handleFilterRuleChange(rowIndex, 'filterRule', item.value)">
                 {{ item.desc }}
               </a-select-option>
             </a-select>
@@ -85,7 +85,8 @@
             <a-input style="width: 300px" v-model="nowOption.filterRules[rowIndex].start" @input="notPreview"/>
 
             <a-button style="margin-left: 10px" @click="addFilterRule" v-if="rowIndex === 0">添加配置</a-button>
-            <a-button style="margin-left: 10px" @click="removeFilterRule(rowIndex)" v-if="rowIndex !== 0">删除配置</a-button>
+            <a-button style="margin-left: 10px" @click="removeFilterRule(rowIndex)" v-if="rowIndex !== 0">删除配置
+            </a-button>
           </div>
         </div>
         <div v-if="nowOption.filterRules.length === 0">
@@ -143,6 +144,93 @@
         </a-row>
       </div>
     </a-drawer>
+
+    <a-drawer
+        :title="config.title"
+        placement="bottom"
+        height="400"
+        :closable="true"
+        :visible="draw.deduplicate"
+        @close="onClose"
+        :zIndex="10"
+        :destroyOnClose="true"
+    >
+      <p>数据去重配置</p>
+      <div v-if="draw.deduplicate && nowOption.id in xlsxData">
+        <div v-if="nowOption.deduplicateRules.length !== 0">
+          <a-button @click="saveDeduplicateRules">保存配置</a-button>
+          <a-button style="margin-left: 10px" v-show="!nowOption.preview" @click="nowOption.preview = true">预览
+          </a-button>
+          <a-button style="margin-left: 10px" v-show="nowOption.preview" @click="nowOption.preview = false">取消预览
+          </a-button>
+          <div class="filter-item" v-for="(rowItem, rowIndex) in nowOption.deduplicateRules">
+            <a-select :default-value="rowItem !== '' ? rowItem : '请选择去重字段'" style="width: 300px">
+              <a-select-option v-for="(item, index) in xlsxData[nowOption.id].columnList" :key="index" :value="item"
+                               @click="handleDeduplicateRuleChange(rowIndex, item)">
+                {{ item }}
+              </a-select-option>
+            </a-select>
+
+            <a-button style="margin-left: 10px" @click="addDeduplicateRule" v-if="rowIndex === 0">添加配置</a-button>
+            <a-button style="margin-left: 10px" @click="removeDeduplicateRule(rowIndex)" v-if="rowIndex !== 0">删除配置
+            </a-button>
+          </div>
+        </div>
+        <div v-if="nowOption.deduplicateRules.length === 0">
+          <a-button @click="addDeduplicateRule">添加配置</a-button>
+        </div>
+
+        <a-row v-if="draw.deduplicate && nowOption.id in xlsxData">
+          <p>筛选前</p>
+          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
+            <a-menu slot="overlay">
+              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
+                <a-checkbox :checked="column.show"
+                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
+                  {{ column.title }}
+                </a-checkbox>
+              </a-menu-item>
+            </a-menu>
+            <a-button style="margin-left: 8px"> 筛选列
+              <a-icon type="down"/>
+            </a-button>
+          </a-dropdown>
+          <a-table
+              style="margin-top: 10px"
+              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+              :data-source="xlsxData[nowOption.id].data"
+              :pagination="xlsxData[nowOption.id].pagination"
+              bordered
+              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
+          </a-table>
+        </a-row>
+
+        <a-row v-if="draw.deduplicate && nowOption.id in xlsxData && nowOption.preview">
+          <p>筛选后</p>
+          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
+            <a-menu slot="overlay">
+              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
+                <a-checkbox :checked="column.show"
+                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
+                  {{ column.title }}
+                </a-checkbox>
+              </a-menu-item>
+            </a-menu>
+            <a-button style="margin-left: 8px"> 筛选列
+              <a-icon type="down"/>
+            </a-button>
+          </a-dropdown>
+          <a-table
+              style="margin-top: 10px"
+              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+              :data-source="deduplicateData(nowOption.deduplicateRules, xlsxData[nowOption.id].data)"
+              :pagination="xlsxData[nowOption.id].pagination"
+              bordered
+              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
+          </a-table>
+        </a-row>
+      </div>
+    </a-drawer>
   </div>
 </template>
 
@@ -163,7 +251,8 @@ export default {
       },
       draw: {
         upload: false,
-        dataFilter: false
+        dataFilter: false,
+        deduplicate: false,
       },
       nowOption: {
         id: 0,
@@ -234,28 +323,28 @@ export default {
         columnList.push(keys[i])
       }
       this.$set(this.xlsxData, this.nowOption.id,
-        {
-          show: true,
-          data: result,
-          columns: columns,
-          columnList: columnList,
-          DropdownVisible: false,
-          columnsCheck: (checked, data, index) => {
-            data[index].show = checked
-          },
-          pagination: {
-            size: 'large',
-            current: 1,
-            pageSize: 10,
-            pageSizeOptions: ['10', '20', '30'],
-            showTotal: (total, range) => {
-              return '共' + total + '条'
+          {
+            show: true,
+            data: result,
+            columns: columns,
+            columnList: columnList,
+            DropdownVisible: false,
+            columnsCheck: (checked, data, index) => {
+              data[index].show = checked
             },
-            hideOnSinglePage: false,
-            showQuickJumper: true,
-            showSizeChanger: true
-          },
-        }
+            pagination: {
+              size: 'large',
+              current: 1,
+              pageSize: 10,
+              pageSizeOptions: ['10', '20', '30'],
+              showTotal: (total, range) => {
+                return '共' + total + '条'
+              },
+              hideOnSinglePage: false,
+              showQuickJumper: true,
+              showSizeChanger: true
+            },
+          }
       )
     },
     readFile(file) {
@@ -267,7 +356,7 @@ export default {
         }
       })
     },
-    handleChange(rowIndex, property, value) {
+    handleFilterRuleChange(rowIndex, property, value) {
       this.nowOption.filterRules[rowIndex][property] = value
       this.notPreview()
     },
@@ -278,7 +367,6 @@ export default {
         column: '',
         type: 'and'
       })
-      console.log(this.nowOption)
     },
     removeFilterRule(index) {
       this.nowOption.filterRules.splice(index, 1)
@@ -287,10 +375,10 @@ export default {
       const properties = this.lf.getProperties(this.nowOption.id)
       properties.filterRules = this.nowOption.filterRules
       this.lf.setProperties(this.nowOption.id, properties)
-      console.log(this.lf.getProperties(this.nowOption.id))
+      this.saveXlsxData(this.nowOption.id, this.filterData(this.nowOption.filterRules, this.xlsxData[this.nowOption.id].data))
     },
     filterData(filterRules, dataList) {
-      let list = JSON.parse(JSON.stringify(dataList))
+      let list = [...dataList]
       let evalString = ''
       for (let i = 0; i < filterRules.length; i++) {
         const rule = filterRules[i]
@@ -330,6 +418,48 @@ export default {
         return eval(evalString)
       })
       return list
+    },
+    handleDeduplicateRuleChange(index, item) {
+      this.nowOption.deduplicateRules[index] = item
+      this.notPreview()
+    },
+    addDeduplicateRule() {
+      this.nowOption.deduplicateRules.push('')
+    },
+    removeDeduplicateRule(index) {
+      this.nowOption.deduplicateRules.splice(index, 1)
+    },
+    saveDeduplicateRules() {
+      const properties = this.lf.getProperties(this.nowOption.id)
+      properties.deduplicateRules = this.nowOption.deduplicateRules
+      this.lf.setProperties(this.nowOption.id, properties)
+      console.log(this.lf.getProperties(this.nowOption.id))
+      this.saveXlsxData(this.nowOption.id, this.deduplicateData(this.nowOption.deduplicateRules, this.xlsxData[this.nowOption.id].data))
+    },
+    deduplicateData(deduplicateRules, dataList) {
+      let list = [...dataList]
+      let evalString = ''
+      for (let i = 0; i < deduplicateRules.length; i++) {
+        if (i !== 0) {
+          evalString += ` + data['${deduplicateRules[i]}']`
+        } else {
+          evalString += `data['${deduplicateRules[i]}']`
+        }
+      }
+      let temp = []
+      list = list.filter((data, index, arr) => {
+        let result = eval(evalString)
+        if (temp.indexOf(result) === -1) {
+          temp.push(result)
+          return true
+        } else {
+          return false
+        }
+      })
+      return list
+    },
+    saveXlsxData(nodeId, dataList) {
+      this.$set(this.xlsxData[nodeId], 'data', dataList)
     },
     notPreview() {
       this.nowOption.preview = false
@@ -1105,6 +1235,7 @@ export default {
         for (let i = 0; i < inComingNodes.length; i++) {
           this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[inComingNodes[i].id]))
         }
+        console.log(this.nowOption)
 
         if ('deduplicateRules' in data.data.properties) {
           this.$set(this.nowOption, 'deduplicateRules', [...data.data.properties.deduplicateRules])
