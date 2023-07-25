@@ -433,7 +433,6 @@ export default {
       const properties = this.lf.getProperties(this.nowOption.id)
       properties.deduplicateRules = this.nowOption.deduplicateRules
       this.lf.setProperties(this.nowOption.id, properties)
-      console.log(this.lf.getProperties(this.nowOption.id))
       this.saveXlsxData(this.nowOption.id, this.deduplicateData(this.nowOption.deduplicateRules, this.xlsxData[this.nowOption.id].data))
     },
     deduplicateData(deduplicateRules, dataList) {
@@ -501,12 +500,16 @@ export default {
 
       const properties = lf.getNodeDataById(nodeId).properties
       if (inComingNodes.length === 1) {
+        let resultData = []
         if (properties.type === 'dataFilter') {
-          const resultData = this.filterData(properties.filterRules, xlsxData[inComingNodes[0].id].data)
-          const data = Object.assign({}, this.xlsxData[inComingNodes[0].id])
-          data.data = resultData
-          this.$set(this.xlsxData, nodeId, data)
+          resultData = this.filterData(properties.filterRules, xlsxData[inComingNodes[0].id].data)
+        } else if (properties.type === 'deduplicate') {
+          resultData = this.deduplicateData(properties.deduplicateRules, xlsxData[inComingNodes[0].id].data)
         }
+
+        const data = Object.assign({}, this.xlsxData[inComingNodes[0].id])
+        data.data = resultData
+        this.$set(this.xlsxData, nodeId, data)
       } else if (inComingNodes.length > 1) {
         console.log('合并数据', nodeId, inComingNodes.map(data => data.id))
       }
@@ -872,6 +875,37 @@ export default {
             "y": 120,
             "value": "数据过滤"
           }
+        },
+        {
+          "id": "06c11828-36fc-4922-b90e-f2819ef77a6c",
+          "type": "circle",
+          "x": 420,
+          "y": -40,
+          "properties": {
+            "type": "upload"
+          },
+          "text": {
+            "x": 420,
+            "y": -40,
+            "value": "开始"
+          }
+        },
+        {
+          "id": "8d26b58d-b474-443a-a021-bdd045184200",
+          "type": "rect",
+          "x": 620,
+          "y": -40,
+          "properties": {
+            "type": "deduplicate",
+            "deduplicateRules": [
+              "萨达"
+            ]
+          },
+          "text": {
+            "x": 620,
+            "y": -40,
+            "value": "去重"
+          }
         }
       ],
       "edges": [
@@ -1189,6 +1223,64 @@ export default {
               "y": 240
             }
           ]
+        },
+        {
+          "id": "61dd1118-f25b-4ee6-9ab3-a193ecd9c412",
+          "type": "polyline",
+          "sourceNodeId": "8d26b58d-b474-443a-a021-bdd045184200",
+          "targetNodeId": "24caa356-2174-4da6-9ede-825381f9a9f8",
+          "startPoint": {
+            "x": 670,
+            "y": -40
+          },
+          "endPoint": {
+            "x": 970,
+            "y": 240
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 670,
+              "y": -40
+            },
+            {
+              "x": 940,
+              "y": -40
+            },
+            {
+              "x": 940,
+              "y": 240
+            },
+            {
+              "x": 970,
+              "y": 240
+            }
+          ]
+        },
+        {
+          "id": "c89848e5-de11-4c47-b135-77d33b7e03e2",
+          "type": "polyline",
+          "sourceNodeId": "06c11828-36fc-4922-b90e-f2819ef77a6c",
+          "targetNodeId": "8d26b58d-b474-443a-a021-bdd045184200",
+          "startPoint": {
+            "x": 470,
+            "y": -40
+          },
+          "endPoint": {
+            "x": 570,
+            "y": -40
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 470,
+              "y": -40
+            },
+            {
+              "x": 570,
+              "y": -40
+            }
+          ]
         }
       ]
     })
@@ -1235,7 +1327,6 @@ export default {
         for (let i = 0; i < inComingNodes.length; i++) {
           this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[inComingNodes[i].id]))
         }
-        console.log(this.nowOption)
 
         if ('deduplicateRules' in data.data.properties) {
           this.$set(this.nowOption, 'deduplicateRules', [...data.data.properties.deduplicateRules])
