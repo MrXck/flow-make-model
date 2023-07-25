@@ -25,12 +25,11 @@
         </a-button>
       </a-upload>
       <a-row v-if="draw.upload && nowOption.id in xlsxData">
-        <div v-for="item in xlsxData[nowOption.id]">
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="item.DropdownVisible">
+          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
             <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in item.columns" :key="columnIndex">
+              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
                 <a-checkbox :checked="column.show"
-                            @change="(e)=>{item.columnsCheck(e.target.checked,item.columns,columnIndex)}">
+                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
                   {{ column.title }}
                 </a-checkbox>
               </a-menu-item>
@@ -41,13 +40,12 @@
           </a-dropdown>
           <a-table
               style="margin-top: 10px"
-              :columns="item.columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="item.data"
-              :pagination="item.pagination"
+              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+              :data-source="xlsxData[nowOption.id].data"
+              :pagination="xlsxData[nowOption.id].pagination"
               bordered
-              @change="(pagination, filters, sorter)=>{item.pagination = pagination}">
+              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
           </a-table>
-        </div>
       </a-row>
     </a-drawer>
 
@@ -136,7 +134,7 @@
           <a-table
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="filterData(xlsxData[nowOption.id].data)"
+              :data-source="filterData(nowOption.filterRules, xlsxData[nowOption.id].data)"
               :pagination="xlsxData[nowOption.id].pagination"
               bordered
               @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
@@ -242,7 +240,7 @@ export default {
         columns.push({title: keys[i], dataIndex: keys[i], key: keys[i], show: true})
         columnList.push(keys[i])
       }
-      this.$set(this.xlsxData, this.nowOption.id, [
+      this.$set(this.xlsxData, this.nowOption.id,
         {
           show: true,
           data: result,
@@ -265,7 +263,7 @@ export default {
             showSizeChanger: true
           },
         }
-      ])
+      )
     },
     readFile(file) {
       return new Promise((resolve) => {
@@ -294,11 +292,11 @@ export default {
       this.lf.setProperties(this.nowOption.id, properties)
       console.log(this.lf.getProperties(this.nowOption.id))
     },
-    filterData(dataList) {
+    filterData(filterRules, dataList) {
       let list = JSON.parse(JSON.stringify(dataList))
       let evalString = ''
-      for (let i = 0; i < this.nowOption.filterRules.length; i++) {
-        const rule = this.nowOption.filterRules[i]
+      for (let i = 0; i < filterRules.length; i++) {
+        const rule = filterRules[i]
         if (rule.filterRule.startsWith('.')) {
           if (i === 0) {
             if (rule.filterRule === '.match') {
@@ -331,7 +329,6 @@ export default {
         }
 
       }
-      console.log(evalString)
       list = list.filter((data, index, arr) => {
         return eval(evalString)
       })
@@ -340,7 +337,74 @@ export default {
     notPreview() {
       // this.$set(this.nowOption, 'preview', false)
       this.nowOption.preview = false
-    }
+    },
+    executeFlow(lf, nodeId, xlsxData) {
+      let nodeData = lf.getNodeDataById(nodeId)
+      if (nodeData.properties.type !== 'upload' && lf.getNodeIncomingNode(nodeId).length === 0) {
+        this.$message.error('请正确配置流程')
+        throw new Error('请正确配置流程.')
+      }
+
+      this.executeBefore(lf, nodeId, xlsxData)
+      let inComing = lf.getNodeIncomingNode(nodeId)
+      for (let i = 0; i < inComing.length; i++) {
+        console.log(inComing[i].id in xlsxData, inComing[i], xlsxData)
+      }
+
+      // if (nodeId in xlsxData) {
+      //   // 下一步
+      //   let outGoingNodes = lf.getNodeOutgoingNode(nodeId)
+      //   for (let i = 0; i < outGoingNodes.length; i++) {
+      //     if (lf.getNodeDataById(outGoingNodes[i].id).properties.type === 'merge') {
+      //       this.executeBefore(lf, outGoingNodes[i].id, xlsxData)
+      //
+      //       // 合并数据
+      //     } else {
+      //       // 执行子节点的规则
+      //       this.execute(lf, outGoingNodes[i].id, xlsxData)
+      //
+      //     }
+      //   }
+      // } else {
+      //   // 向父节点寻找运行
+      //
+      // }
+    },
+    executeBefore(lf, nodeId, xlsxData) {
+      if (nodeId in xlsxData) {
+        return
+      }
+
+
+      let inComingNodes = lf.getNodeIncomingNode(nodeId)
+      if (inComingNodes.length === 0 && lf.getNodeDataById(nodeId).properties.type !== 'upload') {
+        this.$message.error('请正确配置流程')
+        throw new Error('请正确配置流程.')
+      }
+      if (inComingNodes.length === 0) {
+        return
+      }
+
+
+      for (let i = 0; i < inComingNodes.length; i++) {
+        if (!(inComingNodes[i].id in xlsxData)) {
+          this.executeBefore(lf, inComingNodes[i].id, xlsxData)
+        }
+      }
+
+      const properties = lf.getNodeDataById(nodeId).properties
+      if (inComingNodes.length === 1) {
+        if (properties.type === 'dataFilter') {
+          const resultData = this.filterData(properties.filterRules, xlsxData[inComingNodes[0].id].data)
+          const data = Object.assign({}, this.xlsxData[inComingNodes[0].id])
+          data.data = resultData
+          this.$set(this.xlsxData, nodeId, data)
+        }
+      } else if (inComingNodes.length > 1) {
+        console.log('合并数据', nodeId, inComingNodes.map(data => data.id))
+      }
+
+    },
   },
   mounted() {
     const lf = new LogicFlow({
@@ -400,6 +464,42 @@ export default {
       ],
     });
 
+    lf.extension.control.addItem({
+      iconClass: 'custom-minimap',
+      title: '执行',
+      text: '执行',
+      onClick: (lf, ev) => {
+        const uploadNodeIds = []
+        const endNodeIds = lf.getGraphData().nodes.filter((data, index, arr) => {
+          if (data.properties.type !== 'upload') {
+            delete this.xlsxData[data.id]
+          } else {
+            uploadNodeIds.push(data.id)
+          }
+          return lf.getNodeOutgoingNode(data.id).length === 0 && lf.getNodeIncomingNode(data.id) !== 0
+        }).map(data => {
+          return data.id
+        })
+
+        for (let i = 0; i < uploadNodeIds.length; i++) {
+          if (!(uploadNodeIds[i] in this.xlsxData)) {
+            this.$message.error('请在每个开始节点都上传了数据后再执行流程')
+            return
+          }
+        }
+
+        if (endNodeIds.length > 1) {
+          this.$message.error('最多只能同时存在一个最终节点')
+          return
+        } else if (endNodeIds.length < 1) {
+          this.$message.error('最少要有一个最终节点')
+        }
+        for (let i = 0; i < endNodeIds.length; i++) {
+          this.executeFlow(lf, endNodeIds[i], this.xlsxData)
+        }
+      }
+    })
+
     lf.extension.dndPanel.setPatternItems([
       {
         label: '选区',
@@ -432,9 +532,13 @@ export default {
       },
       {
         type: 'rect',
-        label: '系统任务',
+        label: '合并',
+        text: '合并',
         icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAEFVwZaAAAABGdBTUEAALGPC/xhBQAAAqlJREFUOBF9VM9rE0EUfrMJNUKLihGbpLGtaCOIR8VjQMGDePCgCCIiCNqzCAp2MyYUCXhUtF5E0D+g1t48qAd7CCLqQUQKEWkStcEfVGlLdp/fm3aW2QQdyLzf33zz5m2IsAZ9XhDpyaaIZkTS4ASzK41TFao88GuJ3hsr2pAbipHxuSYyKRugagICGANkfFnNh3HeE2N0b3nN2cgnpcictw5veJIzxmDamSlxxQZicq/mflxhbaH8BLRbuRwNtZp0JAhoplVRUdzmCe/vO27wFuuA3S5qXruGdboy5/PRGFsbFGKo/haRtQHIrM83bVeTrOgNhZReWaYGnE4aUQgTJNvijJFF4jQ8BxJE5xfKatZWmZcTQ+BVgh7s8SgPlCkcec4mGTmieTP4xd7PcpIEg1TX6gdeLW8rTVMVLVvb7ctXoH0Cydl2QOPJBG21STE5OsnbweVYzAnD3A7PVILuY0yiiyDwSm2g441r6rMSgp6iK42yqroI2QoXeJVeA+YeZSa47gZdXaZWQKTrG93rukk/l2Al6Kzh5AZEl7dDQy+JjgFahQjRopSxPbrbvK7GRe9ePWBo1wcU7sYrFZtavXALwGw/7Dnc50urrHJuTPSoO2IMV3gUQGNg87IbSOIY9BpiT9HV7FCZ94nPXb3MSnwHn/FFFE1vG6DTby+r31KAkUktB3Qf6ikUPWxW1BkXSPQeMHHiW0+HAd2GelJsZz1OJegCxqzl+CLVHa/IibuHeJ1HAKzhuDR+ymNaRFM+4jU6UWKXorRmbyqkq/D76FffevwdCp+jN3UAN/C9JRVTDuOxC/oh+EdMnqIOrlYteKSfadVRGLJFJPSB/ti/6K8f0CNymg/iH2gO/f0DwE0yjAFO6l8JaR5j0VPwPwfaYHqOqrCI319WzwhwzNW/aQAAAABJRU5ErkJggg==',
-        className: 'import_icon'
+        className: 'import_icon',
+        properties: {
+          type: 'merge',
+        }
       },
       {
         type: 'diamond',
@@ -454,13 +558,13 @@ export default {
         {
           "id": "4a6978b7-b8a2-4c45-b2c6-c5dde956b858",
           "type": "circle",
-          "x": 540,
+          "x": 420,
           "y": 120,
           "properties": {
             "type": "upload"
           },
           "text": {
-            "x": 540,
+            "x": 420,
             "y": 120,
             "value": "开始"
           }
@@ -468,13 +572,191 @@ export default {
         {
           "id": "75fd0b3f-60fe-4b39-8d7a-a3490815b7bd",
           "type": "rect",
-          "x": 780,
+          "x": 620,
           "y": 120,
           "properties": {
             "type": "dataFilter",
+            "filterRules": [
+              {
+                "start": "123777",
+                "filterRule": " == ",
+                "column": "股份第三个发送的",
+                "type": "and"
+              }
+            ]
           },
           "text": {
-            "x": 780,
+            "x": 620,
+            "y": 120,
+            "value": "数据过滤"
+          }
+        },
+        {
+          "id": "8ef2fe61-d012-40b5-82e9-3c75c007de52",
+          "type": "circle",
+          "x": 280,
+          "y": 320,
+          "properties": {
+            "type": "upload"
+          },
+          "text": {
+            "x": 280,
+            "y": 320,
+            "value": "开始"
+          }
+        },
+        {
+          "id": "24caa356-2174-4da6-9ede-825381f9a9f8",
+          "type": "rect",
+          "x": 1020,
+          "y": 240,
+          "properties": {
+            "type": "merge"
+          },
+          "text": {
+            "x": 1020,
+            "y": 240,
+            "value": "合并"
+          }
+        },
+        {
+          "id": "c2b84045-2263-4e41-a16a-ca85d07ed21d",
+          "type": "circle",
+          "x": 1280,
+          "y": 240,
+          "properties": {},
+          "text": {
+            "x": 1280,
+            "y": 240,
+            "value": "结束"
+          }
+        },
+        {
+          "id": "1c5031cc-7c45-4730-867e-417c6819c793",
+          "type": "rect",
+          "x": 520,
+          "y": 320,
+          "properties": {
+            "type": "dataFilter",
+            "filterRules": [
+              {
+                "start": "123777",
+                "filterRule": " == ",
+                "column": "1",
+                "type": "and"
+              }
+            ]
+          },
+          "text": {
+            "x": 520,
+            "y": 320,
+            "value": "数据过滤"
+          }
+        },
+        {
+          "id": "6ed2820c-c5b4-4329-9ceb-7eafc3854910",
+          "type": "circle",
+          "x": 280,
+          "y": 500,
+          "properties": {
+            "type": "upload"
+          },
+          "text": {
+            "x": 280,
+            "y": 500,
+            "value": "开始"
+          }
+        },
+        {
+          "id": "f942f633-2062-4e9c-b4bb-ef23e35f9a14",
+          "type": "rect",
+          "x": 520,
+          "y": 500,
+          "properties": {
+            "type": "dataFilter",
+            "filterRules": [
+              {
+                "start": "321321",
+                "filterRule": ".includes",
+                "column": "name",
+                "type": "and"
+              }
+            ]
+          },
+          "text": {
+            "x": 520,
+            "y": 500,
+            "value": "数据过滤"
+          }
+        },
+        {
+          "id": "7a25e0bc-705c-43ad-acfe-2d0ddad5861d",
+          "type": "rect",
+          "x": 800,
+          "y": 420,
+          "properties": {
+            "type": "merge"
+          },
+          "text": {
+            "x": 800,
+            "y": 420,
+            "value": "合并"
+          }
+        },
+        {
+          "id": "ab66a2ae-1b63-4497-9463-44e549c18eb3",
+          "type": "circle",
+          "x": 280,
+          "y": 660,
+          "properties": {
+            "type": "upload"
+          },
+          "text": {
+            "x": 280,
+            "y": 660,
+            "value": "开始"
+          }
+        },
+        {
+          "id": "6cd67a1c-545b-4ff4-b651-4b4e1563c36d",
+          "type": "rect",
+          "x": 520,
+          "y": 660,
+          "properties": {
+            "type": "dataFilter",
+            "filterRules": [
+              {
+                "start": "刑拘下行",
+                "filterRule": " == ",
+                "column": "模型名称",
+                "type": "and"
+              }
+            ]
+          },
+          "text": {
+            "x": 520,
+            "y": 660,
+            "value": "数据过滤"
+          }
+        },
+        {
+          "id": "da200fe2-53ee-40f6-aa51-975261d2959b",
+          "type": "rect",
+          "x": 840,
+          "y": 120,
+          "properties": {
+            "type": "dataFilter",
+            "filterRules": [
+              {
+                "start": "男",
+                "filterRule": " == ",
+                "column": "萨达",
+                "type": "and"
+              }
+            ]
+          },
+          "text": {
+            "x": 840,
             "y": 120,
             "value": "数据过滤"
           }
@@ -487,22 +769,312 @@ export default {
           "sourceNodeId": "4a6978b7-b8a2-4c45-b2c6-c5dde956b858",
           "targetNodeId": "75fd0b3f-60fe-4b39-8d7a-a3490815b7bd",
           "startPoint": {
-            "x": 590,
+            "x": 470,
             "y": 120
           },
           "endPoint": {
-            "x": 730,
+            "x": 570,
             "y": 120
           },
           "properties": {},
           "pointsList": [
             {
-              "x": 590,
+              "x": 470,
               "y": 120
             },
             {
-              "x": 730,
+              "x": 570,
               "y": 120
+            }
+          ]
+        },
+        {
+          "id": "f25ffecf-d909-43fa-8856-78b22c3dab50",
+          "type": "polyline",
+          "sourceNodeId": "24caa356-2174-4da6-9ede-825381f9a9f8",
+          "targetNodeId": "c2b84045-2263-4e41-a16a-ca85d07ed21d",
+          "startPoint": {
+            "x": 1070,
+            "y": 240
+          },
+          "endPoint": {
+            "x": 1230,
+            "y": 240
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 1070,
+              "y": 240
+            },
+            {
+              "x": 1230,
+              "y": 240
+            }
+          ]
+        },
+        {
+          "id": "f28a8d17-3c53-40f5-8b0e-3c5dc9578255",
+          "type": "polyline",
+          "sourceNodeId": "8ef2fe61-d012-40b5-82e9-3c75c007de52",
+          "targetNodeId": "1c5031cc-7c45-4730-867e-417c6819c793",
+          "startPoint": {
+            "x": 330,
+            "y": 320
+          },
+          "endPoint": {
+            "x": 470,
+            "y": 320
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 330,
+              "y": 320
+            },
+            {
+              "x": 470,
+              "y": 320
+            }
+          ]
+        },
+        {
+          "id": "84fad638-e651-432f-8bc9-d09ce3e14908",
+          "type": "polyline",
+          "sourceNodeId": "6ed2820c-c5b4-4329-9ceb-7eafc3854910",
+          "targetNodeId": "f942f633-2062-4e9c-b4bb-ef23e35f9a14",
+          "startPoint": {
+            "x": 330,
+            "y": 500
+          },
+          "endPoint": {
+            "x": 470,
+            "y": 500
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 330,
+              "y": 500
+            },
+            {
+              "x": 470,
+              "y": 500
+            }
+          ]
+        },
+        {
+          "id": "8d9b770f-d5e9-4e9c-a978-e1967e46ccff",
+          "type": "polyline",
+          "sourceNodeId": "1c5031cc-7c45-4730-867e-417c6819c793",
+          "targetNodeId": "7a25e0bc-705c-43ad-acfe-2d0ddad5861d",
+          "startPoint": {
+            "x": 570,
+            "y": 320
+          },
+          "endPoint": {
+            "x": 750,
+            "y": 420
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 570,
+              "y": 320
+            },
+            {
+              "x": 600,
+              "y": 320
+            },
+            {
+              "x": 600,
+              "y": 420
+            },
+            {
+              "x": 750,
+              "y": 420
+            }
+          ]
+        },
+        {
+          "id": "b5b1dee9-c16c-49da-916a-dadab3b46bf3",
+          "type": "polyline",
+          "sourceNodeId": "f942f633-2062-4e9c-b4bb-ef23e35f9a14",
+          "targetNodeId": "7a25e0bc-705c-43ad-acfe-2d0ddad5861d",
+          "startPoint": {
+            "x": 570,
+            "y": 500
+          },
+          "endPoint": {
+            "x": 750,
+            "y": 420
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 570,
+              "y": 500
+            },
+            {
+              "x": 600,
+              "y": 500
+            },
+            {
+              "x": 600,
+              "y": 420
+            },
+            {
+              "x": 750,
+              "y": 420
+            }
+          ]
+        },
+        {
+          "id": "6f81ce20-05ad-4ad8-87da-cf814ff751d2",
+          "type": "polyline",
+          "sourceNodeId": "7a25e0bc-705c-43ad-acfe-2d0ddad5861d",
+          "targetNodeId": "24caa356-2174-4da6-9ede-825381f9a9f8",
+          "startPoint": {
+            "x": 850,
+            "y": 420
+          },
+          "endPoint": {
+            "x": 970,
+            "y": 240
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 850,
+              "y": 420
+            },
+            {
+              "x": 940,
+              "y": 420
+            },
+            {
+              "x": 940,
+              "y": 240
+            },
+            {
+              "x": 970,
+              "y": 240
+            }
+          ]
+        },
+        {
+          "id": "967416ad-99b0-40c5-9e23-8bb1aad60be9",
+          "type": "polyline",
+          "sourceNodeId": "ab66a2ae-1b63-4497-9463-44e549c18eb3",
+          "targetNodeId": "6cd67a1c-545b-4ff4-b651-4b4e1563c36d",
+          "startPoint": {
+            "x": 330,
+            "y": 660
+          },
+          "endPoint": {
+            "x": 470,
+            "y": 660
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 330,
+              "y": 660
+            },
+            {
+              "x": 470,
+              "y": 660
+            }
+          ]
+        },
+        {
+          "id": "57f99c69-c943-459e-a002-3f0f9c53e4ac",
+          "type": "polyline",
+          "sourceNodeId": "6cd67a1c-545b-4ff4-b651-4b4e1563c36d",
+          "targetNodeId": "7a25e0bc-705c-43ad-acfe-2d0ddad5861d",
+          "startPoint": {
+            "x": 570,
+            "y": 660
+          },
+          "endPoint": {
+            "x": 750,
+            "y": 420
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 570,
+              "y": 660
+            },
+            {
+              "x": 720,
+              "y": 660
+            },
+            {
+              "x": 720,
+              "y": 420
+            },
+            {
+              "x": 750,
+              "y": 420
+            }
+          ]
+        },
+        {
+          "id": "24c86012-23af-408e-b723-195ec4319e56",
+          "type": "polyline",
+          "sourceNodeId": "75fd0b3f-60fe-4b39-8d7a-a3490815b7bd",
+          "targetNodeId": "da200fe2-53ee-40f6-aa51-975261d2959b",
+          "startPoint": {
+            "x": 670,
+            "y": 120
+          },
+          "endPoint": {
+            "x": 790,
+            "y": 120
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 670,
+              "y": 120
+            },
+            {
+              "x": 790,
+              "y": 120
+            }
+          ]
+        },
+        {
+          "id": "57752aca-af2e-4e4f-a4af-f0dd56252854",
+          "type": "polyline",
+          "sourceNodeId": "da200fe2-53ee-40f6-aa51-975261d2959b",
+          "targetNodeId": "24caa356-2174-4da6-9ede-825381f9a9f8",
+          "startPoint": {
+            "x": 890,
+            "y": 120
+          },
+          "endPoint": {
+            "x": 970,
+            "y": 240
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 890,
+              "y": 120
+            },
+            {
+              "x": 940,
+              "y": 120
+            },
+            {
+              "x": 940,
+              "y": 240
+            },
+            {
+              "x": 970,
+              "y": 240
             }
           ]
         }
@@ -518,7 +1090,7 @@ export default {
       if (data.data.properties.type === 'dataFilter') {
         const edges = lf.getNodeIncomingEdge(data.data.id)
         for (let i = 0; i < edges.length; i++) {
-          this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[edges[i].sourceNodeId][0]))
+          this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[edges[i].sourceNodeId]))
         }
 
         if ('filterRules' in data.data.properties) {
@@ -529,7 +1101,7 @@ export default {
       }
 
       // 导出数据
-      // console.log(lf.getGraphData())
+      console.log(lf.getGraphData())
     })
 
     this.lf = lf
