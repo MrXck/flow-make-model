@@ -1,6 +1,6 @@
 <template>
   <div id="app" style="height: 100vh;width: 100vw">
-    <a-spin :spinning="isLoading">
+    <a-spin :spinning="isLoading" style="position: fixed;left: 0;right: 0;top: 0;bottom: 0">
       <div id="container" style="position: fixed;left: 0;right: 0;top: 0;bottom: 0"></div>
     </a-spin>
     <a-drawer
@@ -339,6 +339,96 @@
         placement="bottom"
         height="400"
         :closable="true"
+        :visible="draw.eliminate"
+        @close="onClose"
+        :zIndex="10"
+        :destroyOnClose="true"
+    >
+      <p>数据去重配置</p>
+      <div v-if="draw.eliminate && nowOption.id in xlsxData">
+        <div>
+          <a-button @click="saveEliminateRule">保存配置</a-button>
+          <a-button style="margin-left: 10px" v-show="!nowOption.preview" @click="nowOption.preview = true">预览
+          </a-button>
+          <a-button style="margin-left: 10px" v-show="nowOption.preview" @click="nowOption.preview = false">取消预览
+          </a-button>
+          <div class="filter-item">
+            <a-select
+                :default-value="nowOption.eliminateRule.column !== '' ? nowOption.eliminateRule.column : '请选择剔除数据所在字段'"
+                style="width: 300px">
+              <a-select-option v-for="(item, index) in xlsxData[nowOption.id].columnList" :key="index" :value="item"
+                               @click="handleEliminateRuleChange(item)">
+                {{ item }}
+              </a-select-option>
+            </a-select>
+            <a-input v-model="nowOption.eliminateRule.rule" @input="notPreview" style="margin-left: 10px;width: 300px"/>
+            <a-switch checked-children="开" un-checked-children="关" style="margin-left: 10px" default-checked v-model="nowOption.eliminateRule.matchCase" /> 匹配大小写
+            <a-switch checked-children="开" un-checked-children="关" style="margin-left: 10px" default-checked v-model="nowOption.eliminateRule.matchEntirety" /> 全字匹配
+          </div>
+        </div>
+
+        <a-row v-if="draw.eliminate && nowOption.id in xlsxData">
+          <p>筛选前</p>
+          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
+            <a-menu slot="overlay">
+              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
+                <a-checkbox :checked="column.show"
+                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
+                  {{ column.title }}
+                </a-checkbox>
+              </a-menu-item>
+            </a-menu>
+            <a-button style="margin-left: 8px"> 筛选列
+              <a-icon type="down"/>
+            </a-button>
+          </a-dropdown>
+          <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
+          <a-table
+              style="margin-top: 10px"
+              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+              :data-source="xlsxData[nowOption.id].data"
+              :pagination="xlsxData[nowOption.id].pagination"
+              bordered
+              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
+          </a-table>
+        </a-row>
+
+        <a-row v-if="draw.eliminate && nowOption.id in xlsxData && nowOption.preview">
+          <p>筛选后</p>
+          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
+            <a-menu slot="overlay">
+              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
+                <a-checkbox :checked="column.show"
+                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
+                  {{ column.title }}
+                </a-checkbox>
+              </a-menu-item>
+            </a-menu>
+            <a-button style="margin-left: 8px"> 筛选列
+              <a-icon type="down"/>
+            </a-button>
+          </a-dropdown>
+          <a-button
+              @click="exportXlsx(eliminateData(nowOption.eliminateRule, xlsxData[nowOption.id].data), '导出结果')"
+              style="margin-left: 10px">导出数据
+          </a-button>
+          <a-table
+              style="margin-top: 10px"
+              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+              :data-source="eliminateData(nowOption.eliminateRule, xlsxData[nowOption.id].data)"
+              :pagination="xlsxData[nowOption.id].pagination"
+              bordered
+              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
+          </a-table>
+        </a-row>
+      </div>
+    </a-drawer>
+
+    <a-drawer
+        :title="config.title"
+        placement="bottom"
+        height="400"
+        :closable="true"
         :visible="draw.finish"
         @close="onClose"
         :zIndex="10"
@@ -396,6 +486,7 @@ export default {
         dataFilter: false,
         deduplicate: false,
         related: false,
+        eliminate: false,
         finish: false,
       },
       nowOption: {
@@ -650,6 +741,7 @@ export default {
     },
     handleRelatedChange(rowIndex, type, item) {
       this.nowOption.relatedRules[rowIndex][type] = item
+      this.notPreview()
     },
     removeRelatedRule(index) {
       this.nowOption.relatedRules.splice(index, 1)
@@ -697,6 +789,35 @@ export default {
         return
       }
       this.nowOption.preview = true
+    },
+    handleEliminateRuleChange(item) {
+      this.nowOption.eliminateRule.column = item
+      this.notPreview()
+    },
+    saveEliminateRule() {
+      const properties = this.lf.getProperties(this.nowOption.id)
+      properties.eliminateRule = this.nowOption.eliminateRule
+      this.lf.setProperties(this.nowOption.id, properties)
+      this.saveXlsxData(this.nowOption.id, this.eliminateData(this.nowOption.eliminateRule, this.xlsxData[this.nowOption.id].data))
+    },
+    eliminateData(eliminateRule, dataList) {
+      let list = [...dataList]
+
+      list = list.filter((data, index, arr) => {
+        if (eliminateRule.matchCase) {
+          if (eliminateRule.matchEntirety) {
+            return !(data[eliminateRule.column].toString().toLowerCase() === eliminateRule.rule.toLowerCase())
+          }
+          return !data[eliminateRule.column].toString().toLowerCase().includes(eliminateRule.rule.toLowerCase())
+        } else {
+          if (eliminateRule.matchEntirety) {
+            return !(data[eliminateRule.column] == eliminateRule.rule)
+          }
+          return !data[eliminateRule.column].toString().includes(eliminateRule.rule)
+        }
+      })
+
+      return list
     },
     saveXlsxData(nodeId, dataList) {
       this.$set(this.xlsxData[nodeId], 'data', dataList)
@@ -752,6 +873,8 @@ export default {
           resultData = this.filterData(properties.filterRules, xlsxData[inComingNodes[0].id].data)
         } else if (properties.type === 'deduplicate') {
           resultData = this.deduplicateData(properties.deduplicateRules, xlsxData[inComingNodes[0].id].data)
+        } else if (properties.type === 'eliminate') {
+          resultData = this.eliminateData(properties.eliminateRule, xlsxData[inComingNodes[0].id].data)
         }
 
         const data = Object.assign({}, this.xlsxData[inComingNodes[0].id])
@@ -982,6 +1105,16 @@ export default {
         }
       },
       {
+        type: 'rect',
+        label: '数据剔除',
+        text: '数据剔除',
+        icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAEFVwZaAAAABGdBTUEAALGPC/xhBQAAAqlJREFUOBF9VM9rE0EUfrMJNUKLihGbpLGtaCOIR8VjQMGDePCgCCIiCNqzCAp2MyYUCXhUtF5E0D+g1t48qAd7CCLqQUQKEWkStcEfVGlLdp/fm3aW2QQdyLzf33zz5m2IsAZ9XhDpyaaIZkTS4ASzK41TFao88GuJ3hsr2pAbipHxuSYyKRugagICGANkfFnNh3HeE2N0b3nN2cgnpcictw5veJIzxmDamSlxxQZicq/mflxhbaH8BLRbuRwNtZp0JAhoplVRUdzmCe/vO27wFuuA3S5qXruGdboy5/PRGFsbFGKo/haRtQHIrM83bVeTrOgNhZReWaYGnE4aUQgTJNvijJFF4jQ8BxJE5xfKatZWmZcTQ+BVgh7s8SgPlCkcec4mGTmieTP4xd7PcpIEg1TX6gdeLW8rTVMVLVvb7ctXoH0Cydl2QOPJBG21STE5OsnbweVYzAnD3A7PVILuY0yiiyDwSm2g441r6rMSgp6iK42yqroI2QoXeJVeA+YeZSa47gZdXaZWQKTrG93rukk/l2Al6Kzh5AZEl7dDQy+JjgFahQjRopSxPbrbvK7GRe9ePWBo1wcU7sYrFZtavXALwGw/7Dnc50urrHJuTPSoO2IMV3gUQGNg87IbSOIY9BpiT9HV7FCZ94nPXb3MSnwHn/FFFE1vG6DTby+r31KAkUktB3Qf6ikUPWxW1BkXSPQeMHHiW0+HAd2GelJsZz1OJegCxqzl+CLVHa/IibuHeJ1HAKzhuDR+ymNaRFM+4jU6UWKXorRmbyqkq/D76FffevwdCp+jN3UAN/C9JRVTDuOxC/oh+EdMnqIOrlYteKSfadVRGLJFJPSB/ti/6K8f0CNymg/iH2gO/f0DwE0yjAFO6l8JaR5j0VPwPwfaYHqOqrCI319WzwhwzNW/aQAAAABJRU5ErkJggg==',
+        className: 'import_icon',
+        properties: {
+          type: 'eliminate',
+        }
+      },
+      {
         type: 'circle',
         text: '结束',
         label: '结束节点',
@@ -1009,28 +1142,6 @@ export default {
           }
         },
         {
-          "id": "75fd0b3f-60fe-4b39-8d7a-a3490815b7bd",
-          "type": "rect",
-          "x": 620,
-          "y": 120,
-          "properties": {
-            "type": "dataFilter",
-            "filterRules": [
-              {
-                "start": "123",
-                "filterRule": " == ",
-                "column": "股份第三个发送的",
-                "type": "and"
-              }
-            ]
-          },
-          "text": {
-            "x": 620,
-            "y": 120,
-            "value": "数据过滤"
-          }
-        },
-        {
           "id": "8ef2fe61-d012-40b5-82e9-3c75c007de52",
           "type": "circle",
           "x": 280,
@@ -1054,7 +1165,7 @@ export default {
             "relatedRules": [
               {
                 "7a25e0bc-705c-43ad-acfe-2d0ddad5861d": "4",
-                "da200fe2-53ee-40f6-aa51-975261d2959b": "股份第三个发送的",
+                "da200fe2-53ee-40f6-aa51-975261d2959b": "的撒发生",
                 "8d26b58d-b474-443a-a021-bdd045184200": "股份第三个发送的",
                 "relatedRule": " == "
               }
@@ -1078,7 +1189,7 @@ export default {
           "x": 1280,
           "y": 240,
           "properties": {
-            "type": "finish",
+            "type": "finish"
           },
           "text": {
             "x": 1280,
@@ -1260,34 +1371,29 @@ export default {
             "y": -40,
             "value": "去重"
           }
+        },
+        {
+          "id": "681c820a-4d88-428a-8281-25df386bb7d0",
+          "type": "rect",
+          "x": 620,
+          "y": 120,
+          "properties": {
+            "type": "eliminate",
+            "eliminateRule": {
+              "column": "股份第三个发送的",
+              "rule": "123",
+              "matchCase": false,
+              "matchEntirety": true
+            }
+          },
+          "text": {
+            "x": 620,
+            "y": 120,
+            "value": "数据剔除"
+          }
         }
       ],
       "edges": [
-        {
-          "id": "b1ebbcab-b169-4d89-8413-0191ef46a87e",
-          "type": "polyline",
-          "sourceNodeId": "4a6978b7-b8a2-4c45-b2c6-c5dde956b858",
-          "targetNodeId": "75fd0b3f-60fe-4b39-8d7a-a3490815b7bd",
-          "startPoint": {
-            "x": 470,
-            "y": 120
-          },
-          "endPoint": {
-            "x": 570,
-            "y": 120
-          },
-          "properties": {},
-          "pointsList": [
-            {
-              "x": 470,
-              "y": 120
-            },
-            {
-              "x": 570,
-              "y": 120
-            }
-          ]
-        },
         {
           "id": "f25ffecf-d909-43fa-8856-78b22c3dab50",
           "type": "polyline",
@@ -1521,31 +1627,6 @@ export default {
           ]
         },
         {
-          "id": "24c86012-23af-408e-b723-195ec4319e56",
-          "type": "polyline",
-          "sourceNodeId": "75fd0b3f-60fe-4b39-8d7a-a3490815b7bd",
-          "targetNodeId": "da200fe2-53ee-40f6-aa51-975261d2959b",
-          "startPoint": {
-            "x": 670,
-            "y": 120
-          },
-          "endPoint": {
-            "x": 790,
-            "y": 120
-          },
-          "properties": {},
-          "pointsList": [
-            {
-              "x": 670,
-              "y": 120
-            },
-            {
-              "x": 790,
-              "y": 120
-            }
-          ]
-        },
-        {
           "id": "57752aca-af2e-4e4f-a4af-f0dd56252854",
           "type": "polyline",
           "sourceNodeId": "da200fe2-53ee-40f6-aa51-975261d2959b",
@@ -1635,6 +1716,56 @@ export default {
               "y": -40
             }
           ]
+        },
+        {
+          "id": "f58208b5-b5c7-4ead-98e1-91cc897079e7",
+          "type": "polyline",
+          "sourceNodeId": "4a6978b7-b8a2-4c45-b2c6-c5dde956b858",
+          "targetNodeId": "681c820a-4d88-428a-8281-25df386bb7d0",
+          "startPoint": {
+            "x": 470,
+            "y": 120
+          },
+          "endPoint": {
+            "x": 570,
+            "y": 120
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 470,
+              "y": 120
+            },
+            {
+              "x": 570,
+              "y": 120
+            }
+          ]
+        },
+        {
+          "id": "36524ba7-0674-4380-b481-a5028d2180c7",
+          "type": "polyline",
+          "sourceNodeId": "681c820a-4d88-428a-8281-25df386bb7d0",
+          "targetNodeId": "da200fe2-53ee-40f6-aa51-975261d2959b",
+          "startPoint": {
+            "x": 670,
+            "y": 120
+          },
+          "endPoint": {
+            "x": 790,
+            "y": 120
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 670,
+              "y": 120
+            },
+            {
+              "x": 790,
+              "y": 120
+            }
+          ]
         }
       ]
     })
@@ -1719,6 +1850,16 @@ export default {
 
         this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[inComingNodes[0].id]))
 
+      } else if (type === 'eliminate') {
+        for (let i = 0; i < inComingNodes.length; i++) {
+          this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[inComingNodes[i].id]))
+        }
+
+        if ('eliminateRule' in data.data.properties) {
+          this.$set(this.nowOption, 'eliminateRule', Object.assign({}, data.data.properties.eliminateRule))
+        } else {
+          this.$set(this.nowOption, 'eliminateRule', {column: '', rule: '', matchCase: false, matchEntirety: false})
+        }
       }
 
       // 导出数据
