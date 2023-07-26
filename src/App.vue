@@ -1,6 +1,8 @@
 <template>
   <div id="app" style="height: 100vh;width: 100vw">
-    <div id="container" style="position: fixed;left: 0;right: 0;top: 0;bottom: 0"></div>
+    <a-spin :spinning="isLoading">
+      <div id="container" style="position: fixed;left: 0;right: 0;top: 0;bottom: 0"></div>
+    </a-spin>
     <a-drawer
         :title="config.title"
         placement="bottom"
@@ -388,6 +390,7 @@ export default {
       config: {
         title: ''
       },
+      isLoading: false,
       draw: {
         upload: false,
         dataFilter: false,
@@ -701,20 +704,19 @@ export default {
     saveUploadColumnList(nodeId, columnList) {
       const properties = this.lf.getProperties(nodeId)
       properties.columnList = columnList
-      this.lf.setProperties(this.nowOption.id, properties)
+      this.lf.setProperties(nodeId, properties)
     },
     notPreview() {
       this.nowOption.preview = false
     },
     executeFlow(lf, nodeId, xlsxData) {
       let inComing = lf.getNodeIncomingNode(nodeId)
-
+      let nodeData = lf.getNodeDataById(nodeId)
       if (nodeData.properties.type === 'finish' && inComing.length > 1) {
         this.$message.error('结束节点前不能被一个节点以上连接')
         throw new Error('结束节点前不能被一个节点以上连接.')
       }
 
-      let nodeData = lf.getNodeDataById(nodeId)
       if (nodeData.properties.type !== 'upload' && lf.getNodeIncomingNode(nodeId).length === 0) {
         this.$message.error('请正确配置流程')
         throw new Error('请正确配置流程.')
@@ -837,33 +839,94 @@ export default {
       title: '执行',
       text: '执行',
       onClick: (lf, ev) => {
-        const uploadNodeIds = []
-        const endNodeIds = lf.getGraphData().nodes.filter((data, index, arr) => {
-          if (data.properties.type !== 'upload') {
-            delete this.xlsxData[data.id]
-          } else {
-            uploadNodeIds.push(data.id)
-          }
-          return lf.getNodeOutgoingNode(data.id).length === 0 && lf.getNodeIncomingNode(data.id) !== 0
-        }).map(data => {
-          return data.id
-        })
+        this.isLoading = true
+        try {
+          const uploadNodeIds = []
+          const endNodeIds = lf.getGraphData().nodes.filter((data, index, arr) => {
+            if (data.properties.type !== 'upload') {
+              delete this.xlsxData[data.id]
+            } else {
+              uploadNodeIds.push(data.id)
+            }
+            return lf.getNodeOutgoingNode(data.id).length === 0 && lf.getNodeIncomingNode(data.id) !== 0
+          }).map(data => {
+            return data.id
+          })
 
-        for (let i = 0; i < uploadNodeIds.length; i++) {
-          if (!(uploadNodeIds[i] in this.xlsxData)) {
-            this.$message.error('请在每个开始节点都上传了数据后再执行流程')
+          for (let i = 0; i < uploadNodeIds.length; i++) {
+            if (!(uploadNodeIds[i] in this.xlsxData)) {
+              this.$message.error('请在每个开始节点都上传了数据后再执行流程')
+              return
+            }
+          }
+
+          if (endNodeIds.length > 1) {
+            this.$message.error('最多只能同时存在一个最终节点')
             return
+          } else if (endNodeIds.length < 1) {
+            this.$message.error('最少要有一个最终节点')
           }
+          for (let i = 0; i < endNodeIds.length; i++) {
+            try {
+              this.executeFlow(lf, endNodeIds[i], this.xlsxData)
+            } catch (e) {
+              this.$message.error('执行出错', e)
+              return
+            }
+          }
+        } finally {
+          this.isLoading = false
         }
+      }
+    })
 
-        if (endNodeIds.length > 1) {
-          this.$message.error('最多只能同时存在一个最终节点')
-          return
-        } else if (endNodeIds.length < 1) {
-          this.$message.error('最少要有一个最终节点')
-        }
-        for (let i = 0; i < endNodeIds.length; i++) {
-          this.executeFlow(lf, endNodeIds[i], this.xlsxData)
+    lf.extension.control.addItem({
+      iconClass: 'custom-minimap',
+      title: '保存',
+      text: '保存',
+      onClick: (lf, ev) => {
+        this.isLoading = true
+        try {
+          const uploadNodeIds = []
+          const endNodeIds = lf.getGraphData().nodes.filter((data, index, arr) => {
+            if (data.properties.type !== 'upload') {
+              delete this.xlsxData[data.id]
+            } else {
+              uploadNodeIds.push(data.id)
+            }
+            return lf.getNodeOutgoingNode(data.id).length === 0 && lf.getNodeIncomingNode(data.id) !== 0
+          }).map(data => {
+            return data.id
+          })
+
+          for (let i = 0; i < uploadNodeIds.length; i++) {
+            if (!(uploadNodeIds[i] in this.xlsxData)) {
+              this.$message.error('请在每个开始节点都上传了数据后再执行流程')
+              return
+            }
+          }
+
+          if (endNodeIds.length > 1) {
+            this.$message.error('最多只能同时存在一个最终节点')
+            return
+          } else if (endNodeIds.length < 1) {
+            this.$message.error('最少要有一个最终节点')
+          }
+          for (let i = 0; i < endNodeIds.length; i++) {
+            try {
+              this.executeFlow(lf, endNodeIds[i], this.xlsxData)
+            } catch (e) {
+              this.$message.error(`执行出错${e}`)
+              return
+            }
+          }
+
+          for (let i = 0; i < uploadNodeIds.length; i++) {
+            this.saveUploadColumnList(uploadNodeIds[i], this.xlsxData[uploadNodeIds[i]].columnList)
+          }
+          console.log(lf.getGraphData())
+        } finally {
+          this.isLoading = false
         }
       }
     })
