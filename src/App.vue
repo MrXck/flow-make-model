@@ -74,7 +74,7 @@
                 {{ item }}
               </a-select-option>
             </a-select>
-            <a-select :default-value="rowItem.filterRule !== '' ? rowItem.filterRule : '请选择筛选规则'"
+            <a-select :default-value="rowItem.filterRule !== '' ? filterConfig.filterItem.find(obj => obj.value === rowItem.filterRule).desc : '请选择筛选规则'"
                       style="width: 300px;margin: 0 10px">
               <a-select-option v-for="(item, index) in filterConfig.filterItem" :key="index" :value="index"
                                @click="handleFilterRuleChange(rowIndex, 'filterRule', item.value)">
@@ -246,7 +246,7 @@
       <div v-if="draw.related">
         <div v-if="nowOption.relatedRules.length !== 0">
           <a-button @click="saveRelatedRules">保存配置</a-button>
-          <a-button style="margin-left: 10px" v-show="!nowOption.preview" @click="nowOption.preview = true">预览
+          <a-button style="margin-left: 10px" v-show="!nowOption.preview" @click="previewRelated">预览
           </a-button>
           <a-button style="margin-left: 10px" v-show="nowOption.preview" @click="nowOption.preview = false">取消预览
           </a-button>
@@ -274,7 +274,7 @@
               </a-select-option>
             </a-select>
 
-            <a-select :default-value="rowItem.relatedRule !== '' ? rowItem.relatedRule : '请选择关联规则'"
+            <a-select :default-value="rowItem.relatedRule !== '' ? relatedConfig.relatedItem.find(obj => obj.value === rowItem.relatedRule).desc : '请选择关联规则'"
                       style="width: 300px;margin-left: 10px">
               <a-select-option v-for="(item, index) in relatedConfig.relatedItem" :key="index" :value="index"
                                @click="handleRelatedChange(rowIndex, 'relatedRule', item.value)">
@@ -309,7 +309,7 @@
           <a-table
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="relatedData(nowOption.deduplicateRules, xlsxData[nowOption.id].data, nowOption.saveTableId)"
+              :data-source="relatedData(nowOption.relatedRules, xlsxData[nowOption.id].data, nowOption.saveTableId)"
               :pagination="xlsxData[nowOption.id].pagination"
               bordered
               @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
@@ -566,6 +566,10 @@ export default {
       this.nowOption.relatedRules.push(obj)
     },
     saveRelatedRules() {
+      if (this.nowOption.saveTableId === '') {
+        this.$message.error('请选择最终保留的表')
+        return
+      }
       const properties = this.lf.getProperties(this.nowOption.id)
       properties.relatedRules = this.nowOption.relatedRules
       properties.saveTableId = this.nowOption.saveTableId
@@ -580,15 +584,31 @@ export default {
       this.nowOption.relatedRules.splice(index, 1)
     },
     relatedData(relatedRule, dataList, saveTableId) {
+      if (saveTableId === '') {
+        this.$message.error('请选择最终保留的表')
+        throw new Error('请选择最终保留的表.')
+      }
+
       let list = [...dataList]
-      console.log(relatedRule, saveTableId)
 
+      if (relatedRule.length <= 0) {
+        this.$message.error('请配置关联项')
+        throw new Error('请配置关联项.')
+      }
 
+      let ids = Object.keys(relatedRule[0]).filter((data, index, arr) => {
+        return data !== saveTableId && data !== 'relatedRule'
+      })
 
       for (let i = 0; i < relatedRule.length; i++) {
-        list = list.filter((data, index, arr) => {
-          let saveTableData = data[saveTableId]
+        let evalString = 'saveTableData'
+        for (let j = 0; j < ids.length; j++) {
+          evalString += ` && this.xlsxData['${ids[j]}'].data.find(obj => obj['${relatedRule[i][ids[j]]}'] == saveTableData) !== undefined`
+        }
 
+        list = list.filter((data, index, arr) => {
+          let saveTableData = data[relatedRule[i][saveTableId]]
+          return eval(evalString)
         })
       }
 
@@ -599,6 +619,13 @@ export default {
       let id = this.nowOption.tableIds[index]
       this.$set(this.nowOption, 'saveTableId', id)
       this.$set(this.xlsxData, this.nowOption.id, Object.assign({}, this.xlsxData[id]))
+    },
+    previewRelated() {
+      if (this.nowOption.saveTableId === '') {
+        this.$message.error('请选择最终保留的表')
+        return
+      }
+      this.nowOption.preview = true
     },
     saveXlsxData(nodeId, dataList) {
       this.$set(this.xlsxData[nodeId], 'data', dataList)
@@ -652,7 +679,15 @@ export default {
         data.data = resultData
         this.$set(this.xlsxData, nodeId, data)
       } else if (inComingNodes.length > 1) {
-        console.log('关联数据', nodeId, inComingNodes.map(data => data.id))
+        let resultData = []
+        if (properties.type === 'related') {
+          const data = Object.assign({}, this.xlsxData[properties.saveTableId])
+          resultData = this.relatedData(properties.relatedRules, data.data, properties.saveTableId)
+          data.data = resultData
+          this.$set(this.xlsxData, nodeId, data)
+          console.log('关联数据', nodeId, inComingNodes.map(data => data.id))
+          console.log(this.xlsxData[nodeId])
+        }
       }
     },
   },
@@ -833,7 +868,7 @@ export default {
             "type": "dataFilter",
             "filterRules": [
               {
-                "start": "123777",
+                "start": "123",
                 "filterRule": " == ",
                 "column": "股份第三个发送的",
                 "type": "and"
@@ -866,7 +901,21 @@ export default {
           "x": 1020,
           "y": 240,
           "properties": {
-            "type": "related"
+            "type": "related",
+            "relatedRules": [
+              {
+                "7a25e0bc-705c-43ad-acfe-2d0ddad5861d": "4",
+                "da200fe2-53ee-40f6-aa51-975261d2959b": "股份第三个发送的",
+                "8d26b58d-b474-443a-a021-bdd045184200": "股份第三个发送的",
+                "relatedRule": " == "
+              }
+            ],
+            "saveTableId": "7a25e0bc-705c-43ad-acfe-2d0ddad5861d",
+            "tableIds": [
+              "7a25e0bc-705c-43ad-acfe-2d0ddad5861d",
+              "da200fe2-53ee-40f6-aa51-975261d2959b",
+              "8d26b58d-b474-443a-a021-bdd045184200"
+            ]
           },
           "text": {
             "x": 1020,
@@ -931,7 +980,7 @@ export default {
             "type": "dataFilter",
             "filterRules": [
               {
-                "start": "321321",
+                "start": "123",
                 "filterRule": ".includes",
                 "column": "name",
                 "type": "and"
@@ -950,7 +999,21 @@ export default {
           "x": 800,
           "y": 420,
           "properties": {
-            "type": "related"
+            "type": "related",
+            "relatedRules": [
+              {
+                "1c5031cc-7c45-4730-867e-417c6819c793": "4",
+                "f942f633-2062-4e9c-b4bb-ef23e35f9a14": "name",
+                "6cd67a1c-545b-4ff4-b651-4b4e1563c36d": "模型规则",
+                "relatedRule": " != "
+              }
+            ],
+            "saveTableId": "1c5031cc-7c45-4730-867e-417c6819c793",
+            "tableIds": [
+              "1c5031cc-7c45-4730-867e-417c6819c793",
+              "f942f633-2062-4e9c-b4bb-ef23e35f9a14",
+              "6cd67a1c-545b-4ff4-b651-4b4e1563c36d"
+            ]
           },
           "text": {
             "x": 800,
@@ -981,7 +1044,7 @@ export default {
             "type": "dataFilter",
             "filterRules": [
               {
-                "start": "刑拘下行",
+                "start": "123",
                 "filterRule": " == ",
                 "column": "模型名称",
                 "type": "and"
@@ -1003,7 +1066,7 @@ export default {
             "type": "dataFilter",
             "filterRules": [
               {
-                "start": "男",
+                "start": "女",
                 "filterRule": " == ",
                 "column": "萨达",
                 "type": "and"
@@ -1487,6 +1550,7 @@ export default {
 
         if ('saveTableId' in data.data.properties) {
           this.$set(this.nowOption, 'saveTableId', data.data.properties.saveTableId)
+          this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[data.data.properties.saveTableId]))
         } else {
           this.$set(this.nowOption, 'saveTableId', '')
         }
