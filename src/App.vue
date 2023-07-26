@@ -362,8 +362,8 @@
               </a-select-option>
             </a-select>
             <a-input v-model="nowOption.eliminateRule.rule" @input="notPreview" style="margin-left: 10px;width: 300px"/>
-            <a-switch checked-children="开" un-checked-children="关" style="margin-left: 10px" default-checked v-model="nowOption.eliminateRule.matchCase" /> 匹配大小写
-            <a-switch checked-children="开" un-checked-children="关" style="margin-left: 10px" default-checked v-model="nowOption.eliminateRule.matchEntirety" /> 全字匹配
+            <a-switch checked-children="开" un-checked-children="关" style="margin-left: 10px" v-model="nowOption.eliminateRule.matchCase" /> 匹配大小写
+            <a-switch checked-children="开" un-checked-children="关" style="margin-left: 10px" v-model="nowOption.eliminateRule.matchEntirety" /> 全字匹配
           </div>
         </div>
 
@@ -811,7 +811,7 @@ export default {
           return !data[eliminateRule.column].toString().toLowerCase().includes(eliminateRule.rule.toLowerCase())
         } else {
           if (eliminateRule.matchEntirety) {
-            return !(data[eliminateRule.column] == eliminateRule.rule)
+            return !(data[eliminateRule.column].toString() === eliminateRule.rule)
           }
           return !data[eliminateRule.column].toString().includes(eliminateRule.rule)
         }
