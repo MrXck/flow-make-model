@@ -1,7 +1,6 @@
 <template>
   <div id="app" style="height: 100vh;width: 100vw">
-    <div id="container" style="height: 100vh;width: 100vw"></div>
-    <router-view/>
+    <div id="container" style="position: fixed;left: 0;right: 0;top: 0;bottom: 0"></div>
     <a-drawer
         :title="config.title"
         placement="bottom"
@@ -74,8 +73,9 @@
                 {{ item }}
               </a-select-option>
             </a-select>
-            <a-select :default-value="rowItem.filterRule !== '' ? filterConfig.filterItem.find(obj => obj.value === rowItem.filterRule).desc : '请选择筛选规则'"
-                      style="width: 300px;margin: 0 10px">
+            <a-select
+                :default-value="rowItem.filterRule !== '' ? filterConfig.filterItem.find(obj => obj.value === rowItem.filterRule).desc : '请选择筛选规则'"
+                style="width: 300px;margin: 0 10px">
               <a-select-option v-for="(item, index) in filterConfig.filterItem" :key="index" :value="index"
                                @click="handleFilterRuleChange(rowIndex, 'filterRule', item.value)">
                 {{ item.desc }}
@@ -134,7 +134,9 @@
               <a-icon type="down"/>
             </a-button>
           </a-dropdown>
-          <a-button @click="exportXlsx(filterData(nowOption.filterRules, xlsxData[nowOption.id].data), '导出结果')" style="margin-left: 10px">导出数据</a-button>
+          <a-button @click="exportXlsx(filterData(nowOption.filterRules, xlsxData[nowOption.id].data), '导出结果')"
+                    style="margin-left: 10px">导出数据
+          </a-button>
           <a-table
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
@@ -223,7 +225,10 @@
               <a-icon type="down"/>
             </a-button>
           </a-dropdown>
-          <a-button @click="exportXlsx(deduplicateData(nowOption.deduplicateRules, xlsxData[nowOption.id].data), '导出结果')" style="margin-left: 10px">导出数据</a-button>
+          <a-button
+              @click="exportXlsx(deduplicateData(nowOption.deduplicateRules, xlsxData[nowOption.id].data), '导出结果')"
+              style="margin-left: 10px">导出数据
+          </a-button>
           <a-table
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
@@ -255,8 +260,8 @@
           <a-button style="margin-left: 10px" v-show="nowOption.preview" @click="nowOption.preview = false">取消预览
           </a-button>
           <a-select
-                    :default-value="nowOption.saveTableId !== '' ? nowOption.tableNames[nowOption.tableIds.indexOf(nowOption.saveTableId)] : '请选择保留数据的表'"
-                    style="width: 300px;margin-left: 10px">
+              :default-value="nowOption.saveTableId !== '' ? nowOption.tableNames[nowOption.tableIds.indexOf(nowOption.saveTableId)] : '请选择保留数据的表'"
+              style="width: 300px;margin-left: 10px">
             <a-select-option v-for="(item, index) in nowOption.tableNames"
                              :key="index" :value="index"
                              @click="handleSaveTableChange(index)">
@@ -278,8 +283,9 @@
               </a-select-option>
             </a-select>
 
-            <a-select :default-value="rowItem.relatedRule !== '' ? relatedConfig.relatedItem.find(obj => obj.value === rowItem.relatedRule).desc : '请选择关联规则'"
-                      style="width: 300px;margin-left: 10px">
+            <a-select
+                :default-value="rowItem.relatedRule !== '' ? relatedConfig.relatedItem.find(obj => obj.value === rowItem.relatedRule).desc : '请选择关联规则'"
+                style="width: 300px;margin-left: 10px">
               <a-select-option v-for="(item, index) in relatedConfig.relatedItem" :key="index" :value="index"
                                @click="handleRelatedChange(rowIndex, 'relatedRule', item.value)">
                 {{ item.desc }}
@@ -310,7 +316,10 @@
               <a-icon type="down"/>
             </a-button>
           </a-dropdown>
-          <a-button @click="exportXlsx(relatedData(nowOption.relatedRules, xlsxData[nowOption.id].data, nowOption.saveTableId), '导出结果')" style="margin-left: 10px">导出数据</a-button>
+          <a-button
+              @click="exportXlsx(relatedData(nowOption.relatedRules, xlsxData[nowOption.id].data, nowOption.saveTableId), '导出结果')"
+              style="margin-left: 10px">导出数据
+          </a-button>
           <a-table
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
@@ -459,7 +468,21 @@ export default {
       const workbook = read(data, {type: 'binary', cellDates: true})
       const worksheet = workbook.Sheets[workbook.SheetNames[0]]
       const result = utils.sheet_to_json(worksheet)
+      if (result.length === 0) {
+        this.$message.error('上传的表为空表')
+        return new Promise((resolve, reject) => reject())
+      }
       const keys = Object.keys(result[0])
+
+      if ('columnList' in this.nowOption) {
+        for (let i = 0; i < keys; i++) {
+          if (!(keys[i] in this.nowOption.columnList)) {
+            this.$message.error('上传的表数据有误')
+            return new Promise((resolve, reject) => reject())
+          }
+        }
+      }
+
       const columns = []
       const columnList = []
       for (let i = 0; i < keys.length; i++) {
@@ -675,10 +698,22 @@ export default {
     saveXlsxData(nodeId, dataList) {
       this.$set(this.xlsxData[nodeId], 'data', dataList)
     },
+    saveUploadColumnList(nodeId, columnList) {
+      const properties = this.lf.getProperties(nodeId)
+      properties.columnList = columnList
+      this.lf.setProperties(this.nowOption.id, properties)
+    },
     notPreview() {
       this.nowOption.preview = false
     },
     executeFlow(lf, nodeId, xlsxData) {
+      let inComing = lf.getNodeIncomingNode(nodeId)
+
+      if (nodeData.properties.type === 'finish' && inComing.length > 1) {
+        this.$message.error('结束节点前不能被一个节点以上连接')
+        throw new Error('结束节点前不能被一个节点以上连接.')
+      }
+
       let nodeData = lf.getNodeDataById(nodeId)
       if (nodeData.properties.type !== 'upload' && lf.getNodeIncomingNode(nodeId).length === 0) {
         this.$message.error('请正确配置流程')
@@ -686,10 +721,7 @@ export default {
       }
 
       this.executeBefore(lf, nodeId, xlsxData)
-      let inComing = lf.getNodeIncomingNode(nodeId)
-      for (let i = 0; i < inComing.length; i++) {
-        console.log(inComing[i].id in xlsxData, inComing[i], xlsxData)
-      }
+      this.$set(this.xlsxData, nodeId, Object.assign({}, this.xlsxData[inComing[0].id]))
     },
     executeBefore(lf, nodeId, xlsxData) {
       if (nodeId in xlsxData) {
@@ -736,7 +768,7 @@ export default {
       }
     },
     exportXlsx(data, filename) {
-      const ws = utils.json_to_sheet(data, { sheetStubs: true });
+      const ws = utils.json_to_sheet(data, {sheetStubs: true});
       const wb = utils.book_new();
       utils.book_append_sheet(wb, ws, 'Sheet1');
       writeFile(wb, `${filename}.xlsx`);
@@ -1559,7 +1591,7 @@ export default {
       if (inComingNodes.length > 0) {
         for (let i = 0; i < inComingNodes.length; i++) {
           if (!(inComingNodes[i].id in this.xlsxData)) {
-            this.$message.error('前面有节点数据为空')
+            this.$message.error('前节点数据为空')
             return
           }
         }
@@ -1572,7 +1604,12 @@ export default {
         preview: false
       }
 
-      if (type === 'dataFilter') {
+      if (type === 'upload') {
+        if ('columnList' in data.data.properties) {
+          this.$set(this.nowOption, 'columnList', [...data.data.properties.columnList])
+        }
+
+      } else if (type === 'dataFilter') {
         for (let i = 0; i < inComingNodes.length; i++) {
           this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[inComingNodes[i].id]))
         }
