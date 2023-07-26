@@ -108,6 +108,7 @@
               <a-icon type="down"/>
             </a-button>
           </a-dropdown>
+          <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
           <a-table
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
@@ -133,6 +134,7 @@
               <a-icon type="down"/>
             </a-button>
           </a-dropdown>
+          <a-button @click="exportXlsx(filterData(nowOption.filterRules, xlsxData[nowOption.id].data), '导出结果')" style="margin-left: 10px">导出数据</a-button>
           <a-table
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
@@ -195,6 +197,7 @@
               <a-icon type="down"/>
             </a-button>
           </a-dropdown>
+          <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
           <a-table
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
@@ -220,6 +223,7 @@
               <a-icon type="down"/>
             </a-button>
           </a-dropdown>
+          <a-button @click="exportXlsx(deduplicateData(nowOption.deduplicateRules, xlsxData[nowOption.id].data), '导出结果')" style="margin-left: 10px">导出数据</a-button>
           <a-table
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
@@ -306,6 +310,7 @@
               <a-icon type="down"/>
             </a-button>
           </a-dropdown>
+          <a-button @click="exportXlsx(relatedData(nowOption.relatedRules, xlsxData[nowOption.id].data, nowOption.saveTableId), '导出结果')" style="margin-left: 10px">导出数据</a-button>
           <a-table
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
@@ -317,6 +322,45 @@
         </a-row>
       </div>
     </a-drawer>
+
+    <a-drawer
+        :title="config.title"
+        placement="bottom"
+        height="400"
+        :closable="true"
+        :visible="draw.finish"
+        @close="onClose"
+        :zIndex="10"
+        :destroyOnClose="true"
+    >
+      <p>流程结束数据</p>
+      <a-row v-if="draw.finish && nowOption.id in xlsxData">
+        <p>筛选前</p>
+        <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
+          <a-menu slot="overlay">
+            <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
+              <a-checkbox :checked="column.show"
+                          @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
+                {{ column.title }}
+              </a-checkbox>
+            </a-menu-item>
+          </a-menu>
+          <a-button style="margin-left: 8px"> 筛选列
+            <a-icon type="down"/>
+          </a-button>
+        </a-dropdown>
+        <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
+        <a-table
+            style="margin-top: 10px"
+            :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+            :data-source="xlsxData[nowOption.id].data"
+            :pagination="xlsxData[nowOption.id].pagination"
+            bordered
+            @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
+        </a-table>
+      </a-row>
+    </a-drawer>
+
   </div>
 </template>
 
@@ -325,7 +369,7 @@ import LogicFlow from '@logicflow/core'
 import "@logicflow/core/dist/style/index.css"
 import {Control, DndPanel, Menu, SelectionSelect} from '@logicflow/extension'
 import '@logicflow/extension/lib/style/index.css'
-import {read, utils} from "xlsx";
+import {read, utils, writeFile} from "xlsx";
 
 export default {
   name: "App",
@@ -340,6 +384,7 @@ export default {
         dataFilter: false,
         deduplicate: false,
         related: false,
+        finish: false,
       },
       nowOption: {
         id: 0,
@@ -690,6 +735,12 @@ export default {
         }
       }
     },
+    exportXlsx(data, filename) {
+      const ws = utils.json_to_sheet(data, { sheetStubs: true });
+      const wb = utils.book_new();
+      utils.book_append_sheet(wb, ws, 'Sheet1');
+      writeFile(wb, `${filename}.xlsx`);
+    }
   },
   mounted() {
     const lf = new LogicFlow({
@@ -840,6 +891,9 @@ export default {
         text: '结束',
         label: '结束节点',
         icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAAH6ji2bAAAABGdBTUEAALGPC/xhBQAAA1BJREFUOBFtVE1IVUEYPXOf+tq40Y3vPcmFIdSjIorWoRG0ERWUgnb5FwVhYQSl72oUoZAboxKNFtWiwKRN0M+jpfSzqJAQclHo001tKkjl3emc8V69igP3znzfnO/M9zcDcKT67azmjYWTwl9Vn7Vumeqzj1DVb6cleQY4oAVnIOPb+mKAGxQmKI5CWNJ2aLPatxWa3aB9K7/fB+/Z0jUF6TmMlFLQqrkECWQzOZxYGjTlOl8eeKaIY5yHnFn486xBustDjWT6dG7pmjHOJd+33t0iitTPkK6tEvjxq4h2MozQ6WFSX/LkDUGfFwfhEZj1Auz/U4pyAi5Sznd7uKzznXeVHlI/Aywmk6j7fsUsEuCGADrWARXXwjxWQsUbIupDHJI7kF5dRktg0eN81IbiZXiTESic50iwS+t1oJgL83jAiBupLDCQqwziaWSoAFSeIR3P5Xv5az00wyIn35QRYTwdSYbz8pH8fxUUAtxnFvYmEmgI0wYXUXcCCSpeEVpXlsRhBnCEATxWylL9+EKCAYhe1NGstUa6356kS9NVvt3DU2fd+Wtbm/+lSbylJqsqkSm9CRhvoJVlvKPvF1RKY/FcPn5j4UfIMLn8D4UYb54BNsilTDXKnF4CfTobA0FpoW/LSp306wkXM+XaOJhZaFkcNM82ASNAWMrhrUbRfmyeI1FvRBTpN06WKxa9BK0o2E4Pd3zfBBEwPsv9sQBnmLVbLEIZ/Xe9LYwJu/Er17W6HYVBc7vmuk0xUQ+pqxdom5Fnp55SiytXLPYoMXNM4u4SNSCFWnrVIzKG3EGyMXo6n/BQOe+bX3FClY4PwydVhthOZ9NnS+ntiLh0fxtlUJHAuGaFoVmttpVMeum0p3WEXbcll94l1wM/gZ0Ccczop77VvN2I7TlsZCsuXf1WHvWEhjO8DPtyOVg2/mvK9QqboEth+7pD6NUQC1HN/TwvydGBARi9MZSzLE4b8Ru3XhX2PBxf8E1er2A6516o0w4sIA+lwURhAON82Kwe2iDAC1Watq4XHaGQ7skLcFOtI5lDxuM2gZe6WFIotPAhbaeYlU4to5cuarF1QrcZ/lwrLaCJl66JBocYZnrNlvm2+MBCTmUymPrYZVbjdlr/BxlMjmNmNI3SAAAAAElFTkSuQmCC',
+        properties: {
+          type: 'finish',
+        }
       }
     ])
 
@@ -928,7 +982,9 @@ export default {
           "type": "circle",
           "x": 1280,
           "y": 240,
-          "properties": {},
+          "properties": {
+            "type": "finish",
+          },
           "text": {
             "x": 1280,
             "y": 240,
@@ -1554,6 +1610,14 @@ export default {
         } else {
           this.$set(this.nowOption, 'saveTableId', '')
         }
+
+      } else if (type === 'finish') {
+        if (inComingNodes.length > 1) {
+          this.$message.error('结束节点前不能被一个节点以上连接')
+          return
+        }
+
+        this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[inComingNodes[0].id]))
 
       }
 
