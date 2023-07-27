@@ -40,6 +40,7 @@
           </a-button>
         </a-dropdown>
         <a-table
+            :rowKey="(record,index)=>{return index}"
             style="margin-top: 10px"
             :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
             :data-source="xlsxData[nowOption.id].data"
@@ -122,6 +123,7 @@
           </a-dropdown>
           <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
           <a-table
+              :rowKey="(record,index)=>{return index}"
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
               :data-source="xlsxData[nowOption.id].data"
@@ -150,6 +152,7 @@
                     style="margin-left: 10px">导出数据
           </a-button>
           <a-table
+              :rowKey="(record,index)=>{return index}"
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
               :data-source="filterData(nowOption.filterRules, xlsxData[nowOption.id].data)"
@@ -213,6 +216,7 @@
           </a-dropdown>
           <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
           <a-table
+              :rowKey="(record,index)=>{return index}"
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
               :data-source="xlsxData[nowOption.id].data"
@@ -242,6 +246,7 @@
               style="margin-left: 10px">导出数据
           </a-button>
           <a-table
+              :rowKey="(record,index)=>{return index}"
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
               :data-source="deduplicateData(nowOption.deduplicateRules, xlsxData[nowOption.id].data)"
@@ -333,6 +338,7 @@
               style="margin-left: 10px">导出数据
           </a-button>
           <a-table
+              :rowKey="(record,index)=>{return index}"
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
               :data-source="relatedData(nowOption.relatedRules, xlsxData[nowOption.id].data, nowOption.saveTableId)"
@@ -399,6 +405,7 @@
           </a-dropdown>
           <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
           <a-table
+              :rowKey="(record,index)=>{return index}"
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
               :data-source="xlsxData[nowOption.id].data"
@@ -428,6 +435,7 @@
               style="margin-left: 10px">导出数据
           </a-button>
           <a-table
+              :rowKey="(record,index)=>{return index}"
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
               :data-source="eliminateData(nowOption.eliminateRule, xlsxData[nowOption.id].data)"
@@ -502,6 +510,7 @@
           </a-dropdown>
           <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
           <a-table
+              :rowKey="(record,index)=>{return index}"
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
               :data-source="xlsxData[nowOption.id].data"
@@ -531,9 +540,120 @@
               style="margin-left: 10px">导出数据
           </a-button>
           <a-table
+              :rowKey="(record,index)=>{return index}"
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
               :data-source="contentReplaceData(nowOption.contentReplaceRule, xlsxData[nowOption.id].data)"
+              :pagination="xlsxData[nowOption.id].pagination"
+              bordered
+              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
+          </a-table>
+        </a-row>
+      </div>
+    </a-drawer>
+
+    <a-drawer
+        :title="config.title"
+        placement="bottom"
+        height="400"
+        :closable="true"
+        :visible="draw.date"
+        @close="onClose"
+        :zIndex="10"
+        :destroyOnClose="true"
+    >
+      <p>日期转换配置</p>
+      <div v-if="draw.date && nowOption.id in xlsxData">
+        <div v-if="nowOption.dateRules.length !== 0">
+          <a-button @click="saveDateRules">保存配置</a-button>
+          <a-button style="margin-left: 10px" v-show="!nowOption.preview" @click="nowOption.preview = true">预览
+          </a-button>
+          <a-button style="margin-left: 10px" v-show="nowOption.preview" @click="nowOption.preview = false">取消预览
+          </a-button>
+          <div class="filter-item" v-for="(rowItem, rowIndex) in nowOption.dateRules">
+            <a-select :default-value="rowItem.column !== '' ? rowItem.column : '请选择转换字段'" style="width: 300px">
+              <a-select-option v-for="(item, index) in xlsxData[nowOption.id].columnList" :key="index" :value="item"
+                               @click="handleDateRuleChange(rowIndex, 'column', item)">
+                {{ item }}
+              </a-select-option>
+            </a-select>
+<!--            <a-select-->
+<!--                :default-value="rowItem.originDateRule !== '' ? dateConfig.dateItem.find(obj => obj.value === rowItem.originDateRule).desc : '请选择原格式'"-->
+<!--                style="width: 300px;margin-left: 10px">-->
+<!--              <a-select-option v-for="(item, index) in dateConfig.dateItem" :key="index" :value="index"-->
+<!--                               @click="handleDateRuleChange(rowIndex, 'originDateRule', item.value)">-->
+<!--                {{ item.desc }}-->
+<!--              </a-select-option>-->
+<!--            </a-select>-->
+            <a-select
+                :default-value="rowItem.newDateRule !== '' ? dateConfig.dateItem.find(obj => obj.value === rowItem.newDateRule).desc : '请选择转换后格式'"
+                style="width: 300px;margin-left: 10px">
+              <a-select-option v-for="(item, index) in dateConfig.dateItem" :key="index" :value="index"
+                               @click="handleDateRuleChange(rowIndex, 'newDateRule', item.value)">
+                {{ item.desc }}
+              </a-select-option>
+            </a-select>
+
+            <a-button style="margin-left: 10px" @click="addDateRule" v-if="rowIndex === 0">添加配置</a-button>
+            <a-button style="margin-left: 10px" @click="removeDateRule(rowIndex)" v-if="rowIndex !== 0">删除配置
+            </a-button>
+          </div>
+        </div>
+        <div v-if="nowOption.dateRules.length === 0">
+          <a-button @click="addDateRule">添加配置</a-button>
+        </div>
+
+        <a-row v-if="draw.date && nowOption.id in xlsxData">
+          <p>筛选前</p>
+          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
+            <a-menu slot="overlay">
+              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
+                <a-checkbox :checked="column.show"
+                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
+                  {{ column.title }}
+                </a-checkbox>
+              </a-menu-item>
+            </a-menu>
+            <a-button style="margin-left: 8px"> 筛选列
+              <a-icon type="down"/>
+            </a-button>
+          </a-dropdown>
+          <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
+          <a-table
+              :rowKey="(record,index)=>{return index}"
+              style="margin-top: 10px"
+              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+              :data-source="xlsxData[nowOption.id].data"
+              :pagination="xlsxData[nowOption.id].pagination"
+              bordered
+              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
+          </a-table>
+        </a-row>
+
+        <a-row v-if="draw.date && nowOption.id in xlsxData && nowOption.preview">
+          <p>筛选后</p>
+          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
+            <a-menu slot="overlay">
+              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
+                <a-checkbox :checked="column.show"
+                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
+                  {{ column.title }}
+                </a-checkbox>
+              </a-menu-item>
+            </a-menu>
+            <a-button style="margin-left: 8px"> 筛选列
+              <a-icon type="down"/>
+            </a-button>
+          </a-dropdown>
+          <a-button
+              @click="exportXlsx(dateData(nowOption.dateRules, xlsxData[nowOption.id].data), '导出结果')"
+              style="margin-left: 10px">导出数据
+          </a-button>
+          <a-table
+              :rowKey="(record,index)=>{return index}"
+              style="margin-top: 10px"
+              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+              :data-source="dateData(nowOption.dateRules, xlsxData[nowOption.id].data)"
               :pagination="xlsxData[nowOption.id].pagination"
               bordered
               @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
@@ -554,7 +674,6 @@
     >
       <p>流程结束数据</p>
       <a-row v-if="draw.finish && nowOption.id in xlsxData">
-        <p>筛选前</p>
         <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
           <a-menu slot="overlay">
             <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
@@ -570,6 +689,7 @@
         </a-dropdown>
         <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
         <a-table
+            :rowKey="(record,index)=>{return index}"
             style="margin-top: 10px"
             :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
             :data-source="xlsxData[nowOption.id].data"
@@ -589,6 +709,7 @@ import "@logicflow/core/dist/style/index.css"
 import {Control, DndPanel, Menu, SelectionSelect} from '@logicflow/extension'
 import '@logicflow/extension/lib/style/index.css'
 import {read, utils, writeFile} from "xlsx";
+import dayjs from 'dayjs'
 
 export default {
   name: "App",
@@ -606,6 +727,7 @@ export default {
         related: false,
         eliminate: false,
         contentReplace: false,
+        date: false,
         finish: false,
       },
       nowOption: {
@@ -671,6 +793,34 @@ export default {
             value: ' != '
           }
         ]
+      },
+      dateConfig: {
+        dateItem: [
+          {
+            desc: '2023-12-13',
+            value: 'YYYY-MM-DD'
+          },
+          {
+            desc: '2023年12月13日',
+            value: 'YYYY年MM月DD日'
+          },
+          {
+            desc: '2023/12/13',
+            value: 'YYYY/MM/DD'
+          },
+          {
+            desc: '2023/12/13 12:12:12',
+            value: 'YYYY/MM/DD HH:mm:ss'
+          },
+          {
+            desc: '2023-12-13 12:12:12',
+            value: 'YYYY-MM-DD HH:mm:ss'
+          },
+          {
+            desc: '2023年12月13日 12:12:12',
+            value: 'YYYY年MM月DD日 HH:mm:ss'
+          },
+        ]
       }
     }
   },
@@ -690,12 +840,24 @@ export default {
       const data = await this.readFile(file)
       const workbook = read(data, {type: 'binary', cellDates: true})
       const worksheet = workbook.Sheets[workbook.SheetNames[0]]
-      const result = utils.sheet_to_json(worksheet)
+      let result = utils.sheet_to_json(worksheet)
       if (result.length === 0) {
         this.$message.error('上传的表为空表')
         return new Promise((resolve, reject) => reject())
       }
       const keys = Object.keys(result[0])
+      result = result.map(data => {
+        for (let i = 0; i < keys.length; i++) {
+          if (!(data[keys[i]] instanceof String)) {
+            if (data[keys[i]] instanceof Date) {
+              data[keys[i]] = dayjs(data[keys[i]]).format('YYYY-MM-DD HH:mm:ss')
+            } else {
+              data[keys[i]] = data[keys[i]].toString()
+            }
+          }
+        }
+        return data
+      })
 
       if ('columnList' in this.nowOption) {
         for (let i = 0; i < keys.length; i++) {
@@ -761,6 +923,7 @@ export default {
       })
     },
     removeFilterRule(index) {
+      this.notPreview()
       this.nowOption.filterRules.splice(index, 1)
     },
     saveFilterRules() {
@@ -829,6 +992,7 @@ export default {
       this.nowOption.deduplicateRules.push('')
     },
     removeDeduplicateRule(index) {
+      this.notPreview()
       this.nowOption.deduplicateRules.splice(index, 1)
     },
     saveDeduplicateRules() {
@@ -901,10 +1065,11 @@ export default {
       this.saveXlsxData(this.nowOption.id, this.relatedData(this.nowOption.relatedRules, this.xlsxData[this.nowOption.id].data, this.nowOption.saveTableId))
     },
     handleRelatedChange(rowIndex, type, item) {
-      this.nowOption.relatedRules[rowIndex][type] = item
       this.notPreview()
+      this.nowOption.relatedRules[rowIndex][type] = item
     },
     removeRelatedRule(index) {
+      this.notPreview()
       this.nowOption.relatedRules.splice(index, 1)
     },
     relatedData(relatedRule, dataList, saveTableId) {
@@ -1033,6 +1198,56 @@ export default {
       })
       return list
     },
+    handleDateRuleChange(rowIndex, type, item) {
+      this.notPreview()
+      this.nowOption.dateRules[rowIndex][type] = item
+    },
+    saveDateRules() {
+      for (let i = 0; i < this.nowOption.dateRules.length; i++) {
+        let {column, newDateRule} = this.nowOption.dateRules[i]
+        if (column === '') {
+          this.$message.error('请选择转换字段')
+          return
+        }
+        // if (originDateRule === '') {
+        //   this.$message.error('请选择原格式')
+        //   return
+        // }
+        if (newDateRule === '') {
+          this.$message.error('请选择转换后格式')
+          return
+        }
+      }
+
+      const properties = this.lf.getProperties(this.nowOption.id)
+      properties.dateRules = this.nowOption.dateRules
+      this.lf.setProperties(this.nowOption.id, properties)
+      this.saveXlsxData(this.nowOption.id, this.dateData(this.nowOption.dateRules, this.xlsxData[this.nowOption.id].data))
+    },
+    dateData(dateRules, dataList) {
+      let list = [...dataList]
+      list = list.map(data => {
+        let resultData = Object.assign({}, data)
+        for (let i = 0; i < dateRules.length; i++) {
+          let column = dateRules[i].column
+          resultData[column] = dayjs(resultData[column]).format(dateRules[i].newDateRule)
+        }
+        return resultData
+      })
+      return list
+    },
+    addDateRule() {
+      this.notPreview()
+      this.nowOption.dateRules.push({
+        column: '',
+        // originDateRule: '',
+        newDateRule: ''
+      })
+    },
+    removeDateRule(rowIndex) {
+      this.notPreview()
+      this.nowOption.dateRules.splice(rowIndex, 1)
+    },
     saveXlsxData(nodeId, dataList) {
       this.$set(this.xlsxData[nodeId], 'data', dataList)
     },
@@ -1091,6 +1306,8 @@ export default {
           resultData = this.eliminateData(properties.eliminateRule, xlsxData[inComingNodes[0].id].data)
         } else if (properties.type === 'contentReplace') {
           resultData = this.contentReplaceData(properties.contentReplaceRule, xlsxData[inComingNodes[0].id].data)
+        } else if (properties.type === 'date') {
+          resultData = this.dateData(properties.dateRules, xlsxData[inComingNodes[0].id].data)
         }
 
         const data = Object.assign({}, this.xlsxData[inComingNodes[0].id])
@@ -1341,6 +1558,16 @@ export default {
         }
       },
       {
+        type: 'rect',
+        label: '日期转换',
+        text: '日期转换',
+        icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAEFVwZaAAAABGdBTUEAALGPC/xhBQAAAqlJREFUOBF9VM9rE0EUfrMJNUKLihGbpLGtaCOIR8VjQMGDePCgCCIiCNqzCAp2MyYUCXhUtF5E0D+g1t48qAd7CCLqQUQKEWkStcEfVGlLdp/fm3aW2QQdyLzf33zz5m2IsAZ9XhDpyaaIZkTS4ASzK41TFao88GuJ3hsr2pAbipHxuSYyKRugagICGANkfFnNh3HeE2N0b3nN2cgnpcictw5veJIzxmDamSlxxQZicq/mflxhbaH8BLRbuRwNtZp0JAhoplVRUdzmCe/vO27wFuuA3S5qXruGdboy5/PRGFsbFGKo/haRtQHIrM83bVeTrOgNhZReWaYGnE4aUQgTJNvijJFF4jQ8BxJE5xfKatZWmZcTQ+BVgh7s8SgPlCkcec4mGTmieTP4xd7PcpIEg1TX6gdeLW8rTVMVLVvb7ctXoH0Cydl2QOPJBG21STE5OsnbweVYzAnD3A7PVILuY0yiiyDwSm2g441r6rMSgp6iK42yqroI2QoXeJVeA+YeZSa47gZdXaZWQKTrG93rukk/l2Al6Kzh5AZEl7dDQy+JjgFahQjRopSxPbrbvK7GRe9ePWBo1wcU7sYrFZtavXALwGw/7Dnc50urrHJuTPSoO2IMV3gUQGNg87IbSOIY9BpiT9HV7FCZ94nPXb3MSnwHn/FFFE1vG6DTby+r31KAkUktB3Qf6ikUPWxW1BkXSPQeMHHiW0+HAd2GelJsZz1OJegCxqzl+CLVHa/IibuHeJ1HAKzhuDR+ymNaRFM+4jU6UWKXorRmbyqkq/D76FffevwdCp+jN3UAN/C9JRVTDuOxC/oh+EdMnqIOrlYteKSfadVRGLJFJPSB/ti/6K8f0CNymg/iH2gO/f0DwE0yjAFO6l8JaR5j0VPwPwfaYHqOqrCI319WzwhwzNW/aQAAAABJRU5ErkJggg==',
+        className: 'import_icon',
+        properties: {
+          type: 'date',
+        }
+      },
+      {
         type: 'circle',
         text: '结束',
         label: '结束节点',
@@ -1568,23 +1795,9 @@ export default {
           }
         },
         {
-          "id": "06c11828-36fc-4922-b90e-f2819ef77a6c",
-          "type": "circle",
-          "x": 420,
-          "y": -40,
-          "properties": {
-            "type": "upload"
-          },
-          "text": {
-            "x": 420,
-            "y": -40,
-            "value": "开始"
-          }
-        },
-        {
           "id": "8d26b58d-b474-443a-a021-bdd045184200",
           "type": "rect",
-          "x": 620,
+          "x": 800,
           "y": -40,
           "properties": {
             "type": "deduplicate",
@@ -1593,7 +1806,7 @@ export default {
             ]
           },
           "text": {
-            "x": 620,
+            "x": 800,
             "y": -40,
             "value": "去重"
           }
@@ -1616,6 +1829,40 @@ export default {
             "x": 620,
             "y": 120,
             "value": "数据剔除"
+          }
+        },
+        {
+          "id": "e7d9db23-476a-439f-b2d6-122570e80d13",
+          "type": "circle",
+          "x": 380,
+          "y": -40,
+          "properties": {
+            "type": "upload"
+          },
+          "text": {
+            "x": 380,
+            "y": -40,
+            "value": "开始"
+          }
+        },
+        {
+          "id": "39d3b946-13b1-4db3-bde5-438ce36f1e43",
+          "type": "rect",
+          "x": 580,
+          "y": -40,
+          "properties": {
+            "type": "date",
+            "dateRules": [
+              {
+                "column": "时间",
+                "newDateRule": "YYYY-MM-DD"
+              }
+            ]
+          },
+          "text": {
+            "x": 580,
+            "y": -40,
+            "value": "日期转换"
           }
         }
       ],
@@ -1891,7 +2138,7 @@ export default {
           "sourceNodeId": "8d26b58d-b474-443a-a021-bdd045184200",
           "targetNodeId": "24caa356-2174-4da6-9ede-825381f9a9f8",
           "startPoint": {
-            "x": 670,
+            "x": 850,
             "y": -40
           },
           "endPoint": {
@@ -1901,7 +2148,7 @@ export default {
           "properties": {},
           "pointsList": [
             {
-              "x": 670,
+              "x": 850,
               "y": -40
             },
             {
@@ -1915,31 +2162,6 @@ export default {
             {
               "x": 970,
               "y": 240
-            }
-          ]
-        },
-        {
-          "id": "c89848e5-de11-4c47-b135-77d33b7e03e2",
-          "type": "polyline",
-          "sourceNodeId": "06c11828-36fc-4922-b90e-f2819ef77a6c",
-          "targetNodeId": "8d26b58d-b474-443a-a021-bdd045184200",
-          "startPoint": {
-            "x": 470,
-            "y": -40
-          },
-          "endPoint": {
-            "x": 570,
-            "y": -40
-          },
-          "properties": {},
-          "pointsList": [
-            {
-              "x": 470,
-              "y": -40
-            },
-            {
-              "x": 570,
-              "y": -40
             }
           ]
         },
@@ -1990,6 +2212,56 @@ export default {
             {
               "x": 790,
               "y": 120
+            }
+          ]
+        },
+        {
+          "id": "27657602-b9cb-4777-b876-fbb86812f767",
+          "type": "polyline",
+          "sourceNodeId": "e7d9db23-476a-439f-b2d6-122570e80d13",
+          "targetNodeId": "39d3b946-13b1-4db3-bde5-438ce36f1e43",
+          "startPoint": {
+            "x": 430,
+            "y": -40
+          },
+          "endPoint": {
+            "x": 530,
+            "y": -40
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 430,
+              "y": -40
+            },
+            {
+              "x": 530,
+              "y": -40
+            }
+          ]
+        },
+        {
+          "id": "a46503d6-57fe-4a5c-a618-88aba60a3562",
+          "type": "polyline",
+          "sourceNodeId": "39d3b946-13b1-4db3-bde5-438ce36f1e43",
+          "targetNodeId": "8d26b58d-b474-443a-a021-bdd045184200",
+          "startPoint": {
+            "x": 630,
+            "y": -40
+          },
+          "endPoint": {
+            "x": 750,
+            "y": -40
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 630,
+              "y": -40
+            },
+            {
+              "x": 750,
+              "y": -40
             }
           ]
         }
@@ -2105,6 +2377,16 @@ export default {
           })
         }
 
+      } else if (type === 'date') {
+        for (let i = 0; i < inComingNodes.length; i++) {
+          this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[inComingNodes[i].id]))
+        }
+
+        if ('dateRules' in data.data.properties) {
+          this.$set(this.nowOption, 'dateRules', [...data.data.properties.dateRules])
+        } else {
+          this.$set(this.nowOption, 'dateRules', [])
+        }
       }
 
       // 导出数据
