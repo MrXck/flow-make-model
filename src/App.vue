@@ -1226,14 +1226,16 @@ export default {
     },
     dateData(dateRules, dataList) {
       let list = [...dataList]
-      list = list.map(data => {
-        let resultData = Object.assign({}, data)
-        for (let i = 0; i < dateRules.length; i++) {
-          let column = dateRules[i].column
-          resultData[column] = dayjs(resultData[column]).format(dateRules[i].newDateRule)
-        }
-        return resultData
-      })
+      if (dateRules.length > 0) {
+        list = list.map(data => {
+          let resultData = Object.assign({}, data)
+          for (let i = 0; i < dateRules.length; i++) {
+            let column = dateRules[i].column
+            resultData[column] = dayjs(resultData[column]).format(dateRules[i].newDateRule)
+          }
+          return resultData
+        })
+      }
       return list
     },
     addDateRule() {
