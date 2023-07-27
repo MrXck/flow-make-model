@@ -84,7 +84,8 @@
               </a-select-option>
             </a-select>
 
-            <a-input style="width: 300px" v-model="nowOption.filterRules[rowIndex].start" @input="notPreview"/>
+            <a-input style="width: 300px" v-model="nowOption.filterRules[rowIndex].start" @input="notPreview"
+                     placeholder="筛选内容"/>
 
             <a-button style="margin-left: 10px" @click="addFilterRule" v-if="rowIndex === 0">添加配置</a-button>
             <a-button style="margin-left: 10px" @click="removeFilterRule(rowIndex)" v-if="rowIndex !== 0">删除配置
@@ -344,7 +345,7 @@
         :zIndex="10"
         :destroyOnClose="true"
     >
-      <p>数据去重配置</p>
+      <p>数据剔除配置</p>
       <div v-if="draw.eliminate && nowOption.id in xlsxData">
         <div>
           <a-button @click="saveEliminateRule">保存配置</a-button>
@@ -361,9 +362,14 @@
                 {{ item }}
               </a-select-option>
             </a-select>
-            <a-input v-model="nowOption.eliminateRule.rule" @input="notPreview" style="margin-left: 10px;width: 300px"/>
-            <a-switch checked-children="开" un-checked-children="关" style="margin-left: 10px" v-model="nowOption.eliminateRule.matchCase" /> 匹配大小写
-            <a-switch checked-children="开" un-checked-children="关" style="margin-left: 10px" v-model="nowOption.eliminateRule.matchEntirety" /> 全字匹配
+            <a-input v-model="nowOption.eliminateRule.rule" @input="notPreview" style="margin-left: 10px;width: 300px"
+                     placeholder="剔除内容"/>
+            <a-switch checked-children="开" un-checked-children="关" style="margin-left: 10px"
+                      v-model="nowOption.eliminateRule.matchCase" @click="notPreview"/>
+            匹配大小写
+            <a-switch checked-children="开" un-checked-children="关" style="margin-left: 10px"
+                      v-model="nowOption.eliminateRule.matchEntirety" @click="notPreview"/>
+            全字匹配
           </div>
         </div>
 
@@ -416,6 +422,109 @@
               style="margin-top: 10px"
               :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
               :data-source="eliminateData(nowOption.eliminateRule, xlsxData[nowOption.id].data)"
+              :pagination="xlsxData[nowOption.id].pagination"
+              bordered
+              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
+          </a-table>
+        </a-row>
+      </div>
+    </a-drawer>
+
+    <a-drawer
+        :title="config.title"
+        placement="bottom"
+        height="400"
+        :closable="true"
+        :visible="draw.contentReplace"
+        @close="onClose"
+        :zIndex="10"
+        :destroyOnClose="true"
+    >
+      <p>内容替换配置</p>
+      <div v-if="draw.contentReplace && nowOption.id in xlsxData">
+        <div>
+          <a-button @click="saveContentReplaceRule">保存配置</a-button>
+          <a-button style="margin-left: 10px" v-show="!nowOption.preview" @click="nowOption.preview = true">预览
+          </a-button>
+          <a-button style="margin-left: 10px" v-show="nowOption.preview" @click="nowOption.preview = false">取消预览
+          </a-button>
+          <div class="filter-item">
+            <a-select
+                :default-value="nowOption.contentReplaceRule.column !== '' ? nowOption.contentReplaceRule.column : '请选择内容替换字段'"
+                style="width: 300px">
+              <a-select-option v-for="(item, index) in xlsxData[nowOption.id].columnList" :key="index" :value="item"
+                               @click="handleContentReplaceRuleChange(item)">
+                {{ item }}
+              </a-select-option>
+            </a-select>
+            <a-input v-model="nowOption.contentReplaceRule.findContent" @input="notPreview"
+                     style="margin-left: 10px;width: 300px" placeholder="查找内容"/>
+            <a-input v-model="nowOption.contentReplaceRule.replaceContent" @input="notPreview"
+                     style="margin-left: 10px;width: 300px" placeholder="替换内容"/>
+            <a-switch checked-children="开" un-checked-children="关" style="margin-left: 10px"
+                      v-model="nowOption.contentReplaceRule.matchCase" @click="notPreview"/>
+            匹配大小写
+            <a-switch checked-children="开" un-checked-children="关" style="margin-left: 10px"
+                      v-model="nowOption.contentReplaceRule.matchEntirety" @click="notPreview"/>
+            全字匹配
+            <!--            <a-switch checked-children="开" un-checked-children="关" style="margin-left: 10px"-->
+            <!--                      v-model="nowOption.contentReplaceRule.isReplaceOrigin"/>-->
+            <!--            是否在原字段上直接替换-->
+            <!--            <a-input v-model="nowOption.contentReplaceRule.newColumn"-->
+            <!--                     v-if="!nowOption.contentReplaceRule.isReplaceOrigin" @input="notPreview"-->
+            <!--                     style="margin-left: 10px;width: 300px" placeholder="新字段名称"/>-->
+          </div>
+        </div>
+
+        <a-row v-if="draw.contentReplace && nowOption.id in xlsxData">
+          <p>筛选前</p>
+          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
+            <a-menu slot="overlay">
+              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
+                <a-checkbox :checked="column.show"
+                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
+                  {{ column.title }}
+                </a-checkbox>
+              </a-menu-item>
+            </a-menu>
+            <a-button style="margin-left: 8px"> 筛选列
+              <a-icon type="down"/>
+            </a-button>
+          </a-dropdown>
+          <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
+          <a-table
+              style="margin-top: 10px"
+              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+              :data-source="xlsxData[nowOption.id].data"
+              :pagination="xlsxData[nowOption.id].pagination"
+              bordered
+              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
+          </a-table>
+        </a-row>
+
+        <a-row v-if="draw.contentReplace && nowOption.id in xlsxData && nowOption.preview">
+          <p>筛选后</p>
+          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
+            <a-menu slot="overlay">
+              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
+                <a-checkbox :checked="column.show"
+                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
+                  {{ column.title }}
+                </a-checkbox>
+              </a-menu-item>
+            </a-menu>
+            <a-button style="margin-left: 8px"> 筛选列
+              <a-icon type="down"/>
+            </a-button>
+          </a-dropdown>
+          <a-button
+              @click="exportXlsx(contentReplaceData(nowOption.contentReplaceRule, xlsxData[nowOption.id].data), '导出结果')"
+              style="margin-left: 10px">导出数据
+          </a-button>
+          <a-table
+              style="margin-top: 10px"
+              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+              :data-source="contentReplaceData(nowOption.contentReplaceRule, xlsxData[nowOption.id].data)"
               :pagination="xlsxData[nowOption.id].pagination"
               bordered
               @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
@@ -487,6 +596,7 @@ export default {
         deduplicate: false,
         related: false,
         eliminate: false,
+        contentReplace: false,
         finish: false,
       },
       nowOption: {
@@ -819,6 +929,54 @@ export default {
 
       return list
     },
+    handleContentReplaceRuleChange(item) {
+      this.nowOption.contentReplaceRule.column = item
+      this.notPreview()
+    },
+    saveContentReplaceRule() {
+      let {column, isReplaceOrigin, newColumn} = this.nowOption.contentReplaceRule
+
+      if (column === '') {
+        this.$message.error('内容替换字段不能为空')
+        return
+      }
+      // if (!isReplaceOrigin && newColumn === '') {
+      //   this.$message.error('当不在原字段上替换时 新字段不能为空')
+      //   return
+      // }
+      // if (!isReplaceOrigin && newColumn === column) {
+      //   this.$message.error('新字段不能与原字段重名')
+      //   return
+      // }
+
+      const properties = this.lf.getProperties(this.nowOption.id)
+      properties.contentReplaceRule = this.nowOption.contentReplaceRule
+      this.lf.setProperties(this.nowOption.id, properties)
+      this.saveXlsxData(this.nowOption.id, this.contentReplaceData(this.nowOption.contentReplaceRule, this.xlsxData[this.nowOption.id].data))
+    },
+    contentReplaceData(contentReplaceRule, dataList) {
+      let list = [...dataList]
+      list = list.map(data => {
+        const previewData = Object.assign({}, data)
+        let regStr
+        if (contentReplaceRule.matchEntirety) {
+          regStr = `/^${contentReplaceRule.findContent}$/g`
+        } else {
+          regStr = `/${contentReplaceRule.findContent}/g`
+        }
+        if (contentReplaceRule.matchCase) {
+          regStr += 'i'
+        }
+        // if (contentReplaceRule.isReplaceOrigin) {
+        //   data[contentReplaceRule.column] = data[contentReplaceRule.column].toString().replace(eval(regStr), contentReplaceRule.replaceContent)
+        // } else {
+        //   data[contentReplaceRule.newColumn] = data[contentReplaceRule.column].toString().replace(eval(regStr), contentReplaceRule.replaceContent)
+        // }
+        previewData[contentReplaceRule.column] = data[contentReplaceRule.column].toString().replace(eval(regStr), contentReplaceRule.replaceContent)
+        return previewData
+      })
+      return list
+    },
     saveXlsxData(nodeId, dataList) {
       this.$set(this.xlsxData[nodeId], 'data', dataList)
     },
@@ -875,6 +1033,8 @@ export default {
           resultData = this.deduplicateData(properties.deduplicateRules, xlsxData[inComingNodes[0].id].data)
         } else if (properties.type === 'eliminate') {
           resultData = this.eliminateData(properties.eliminateRule, xlsxData[inComingNodes[0].id].data)
+        } else if (properties.type === 'contentReplace') {
+          resultData = this.contentReplaceData(properties.contentReplaceRule, xlsxData[inComingNodes[0].id].data)
         }
 
         const data = Object.assign({}, this.xlsxData[inComingNodes[0].id])
@@ -1112,6 +1272,16 @@ export default {
         className: 'import_icon',
         properties: {
           type: 'eliminate',
+        }
+      },
+      {
+        type: 'rect',
+        label: '内容替换',
+        text: '内容替换',
+        icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAEFVwZaAAAABGdBTUEAALGPC/xhBQAAAqlJREFUOBF9VM9rE0EUfrMJNUKLihGbpLGtaCOIR8VjQMGDePCgCCIiCNqzCAp2MyYUCXhUtF5E0D+g1t48qAd7CCLqQUQKEWkStcEfVGlLdp/fm3aW2QQdyLzf33zz5m2IsAZ9XhDpyaaIZkTS4ASzK41TFao88GuJ3hsr2pAbipHxuSYyKRugagICGANkfFnNh3HeE2N0b3nN2cgnpcictw5veJIzxmDamSlxxQZicq/mflxhbaH8BLRbuRwNtZp0JAhoplVRUdzmCe/vO27wFuuA3S5qXruGdboy5/PRGFsbFGKo/haRtQHIrM83bVeTrOgNhZReWaYGnE4aUQgTJNvijJFF4jQ8BxJE5xfKatZWmZcTQ+BVgh7s8SgPlCkcec4mGTmieTP4xd7PcpIEg1TX6gdeLW8rTVMVLVvb7ctXoH0Cydl2QOPJBG21STE5OsnbweVYzAnD3A7PVILuY0yiiyDwSm2g441r6rMSgp6iK42yqroI2QoXeJVeA+YeZSa47gZdXaZWQKTrG93rukk/l2Al6Kzh5AZEl7dDQy+JjgFahQjRopSxPbrbvK7GRe9ePWBo1wcU7sYrFZtavXALwGw/7Dnc50urrHJuTPSoO2IMV3gUQGNg87IbSOIY9BpiT9HV7FCZ94nPXb3MSnwHn/FFFE1vG6DTby+r31KAkUktB3Qf6ikUPWxW1BkXSPQeMHHiW0+HAd2GelJsZz1OJegCxqzl+CLVHa/IibuHeJ1HAKzhuDR+ymNaRFM+4jU6UWKXorRmbyqkq/D76FffevwdCp+jN3UAN/C9JRVTDuOxC/oh+EdMnqIOrlYteKSfadVRGLJFJPSB/ti/6K8f0CNymg/iH2gO/f0DwE0yjAFO6l8JaR5j0VPwPwfaYHqOqrCI319WzwhwzNW/aQAAAABJRU5ErkJggg==',
+        className: 'import_icon',
+        properties: {
+          type: 'contentReplace',
         }
       },
       {
@@ -1860,6 +2030,25 @@ export default {
         } else {
           this.$set(this.nowOption, 'eliminateRule', {column: '', rule: '', matchCase: false, matchEntirety: false})
         }
+      } else if (type === 'contentReplace') {
+        for (let i = 0; i < inComingNodes.length; i++) {
+          this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[inComingNodes[i].id]))
+        }
+
+        if ('contentReplaceRule' in data.data.properties) {
+          this.$set(this.nowOption, 'contentReplaceRule', Object.assign({}, data.data.properties.contentReplaceRule))
+        } else {
+          this.$set(this.nowOption, 'contentReplaceRule', {
+            column: '',
+            findContent: '',
+            replaceContent: '',
+            matchCase: false,
+            matchEntirety: false,
+            isReplaceOrigin: false,
+            newColumn: ''
+          })
+        }
+
       }
 
       // 导出数据
