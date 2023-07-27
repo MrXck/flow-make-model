@@ -83,6 +83,15 @@
                 {{ item.desc }}
               </a-select-option>
             </a-select>
+            <a-select
+                v-if="rowIndex !== 0"
+                :default-value="rowItem.type !== '' ? filterConfig.filterRelate.find(obj => obj.value === rowItem.type).desc : '请选择与或关系'"
+                style="width: 300px;margin: 0 10px">
+              <a-select-option v-for="(item, index) in filterConfig.filterRelate" :key="index" :value="index"
+                               @click="handleFilterRuleChange(rowIndex, 'type', item.value)">
+                {{ item.desc }}
+              </a-select-option>
+            </a-select>
 
             <a-input style="width: 300px" v-model="nowOption.filterRules[rowIndex].start" @input="notPreview"
                      placeholder="筛选内容"/>
@@ -639,6 +648,16 @@ export default {
             desc: '正则表达式',
             value: '.match'
           },
+        ],
+        filterRelate: [
+          {
+            desc: '与',
+            value: ' && '
+          },
+          {
+            desc: '或',
+            value: ' || '
+          }
         ]
       },
       relatedConfig: {
@@ -733,17 +752,34 @@ export default {
       this.notPreview()
     },
     addFilterRule() {
+      this.notPreview()
       this.nowOption.filterRules.push({
         start: '',
         filterRule: '',
         column: '',
-        type: 'and'
+        type: ' && '
       })
     },
     removeFilterRule(index) {
       this.nowOption.filterRules.splice(index, 1)
     },
     saveFilterRules() {
+      for (let i = 0; i < this.nowOption.filterRules.length; i++) {
+        let {filterRule, column, type} = this.nowOption.filterRules[i]
+        if (filterRule === '') {
+          this.$message.error('筛选规则不能为空')
+          return
+        }
+        if (column === '') {
+          this.$message.error('筛选字段不能为空')
+          return
+        }
+        if (type === '') {
+          this.$message.error('与或规则不能为空')
+          return
+        }
+      }
+
       const properties = this.lf.getProperties(this.nowOption.id)
       properties.filterRules = this.nowOption.filterRules
       this.lf.setProperties(this.nowOption.id, properties)
@@ -762,11 +798,7 @@ export default {
               evalString += `data['${rule.column}'].toString()${rule.filterRule}('${rule.start}')`
             }
           } else {
-            if (rule.type === 'and') {
-              evalString += ` && `
-            } else {
-              evalString += ` || `
-            }
+            evalString += rule.type
             if (rule.filterRule === '.match') {
               evalString += `/${rule.start}/.test(data['${rule.column}'].toString())`
             } else {
@@ -777,15 +809,12 @@ export default {
           if (i === 0) {
             evalString += `data['${rule.column}']${rule.filterRule}'${rule.start}'`
           } else {
-            if (rule.type === 'and') {
-              evalString += ` && data['${rule.column}']${rule.filterRule}'${rule.start}'`
-            } else {
-              evalString += ` || data['${rule.column}']${rule.filterRule}'${rule.start}'`
-            }
+            evalString += `${rule.type}data['${rule.column}']${rule.filterRule}'${rule.start}'`
           }
         }
 
       }
+      console.log(evalString)
       list = list.filter((data, index, arr) => {
         return eval(evalString)
       })
@@ -796,12 +825,19 @@ export default {
       this.notPreview()
     },
     addDeduplicateRule() {
+      this.notPreview()
       this.nowOption.deduplicateRules.push('')
     },
     removeDeduplicateRule(index) {
       this.nowOption.deduplicateRules.splice(index, 1)
     },
     saveDeduplicateRules() {
+      for (let i = 0; i < this.nowOption.deduplicateRules.length; i++) {
+        if (this.nowOption.deduplicateRules[i] === '') {
+          this.$message.error('去重字段不能为空')
+          return
+        }
+      }
       const properties = this.lf.getProperties(this.nowOption.id)
       properties.deduplicateRules = this.nowOption.deduplicateRules
       this.lf.setProperties(this.nowOption.id, properties)
@@ -817,19 +853,22 @@ export default {
           evalString += `data['${deduplicateRules[i]}']`
         }
       }
-      let temp = []
-      list = list.filter((data, index, arr) => {
-        let result = eval(evalString)
-        if (temp.indexOf(result) === -1) {
-          temp.push(result)
-          return true
-        } else {
-          return false
-        }
-      })
+      if (evalString !== '') {
+        let temp = []
+        list = list.filter((data, index, arr) => {
+          let result = eval(evalString)
+          if (temp.indexOf(result) === -1) {
+            temp.push(result)
+            return true
+          } else {
+            return false
+          }
+        })
+      }
       return list
     },
     addRelatedRule() {
+      this.notPreview()
       let obj = {}
       for (let i = 0; i < this.nowOption.tableIds.length; i++) {
         obj[this.nowOption.tableIds[i]] = ''
@@ -842,6 +881,18 @@ export default {
         this.$message.error('请选择最终保留的表')
         return
       }
+
+      for (let i = 0; i < this.nowOption.relatedRules.length; i++) {
+        let keys = Object.keys(this.nowOption.relatedRules[i])
+        for (let j = 0; j < keys.length; j++) {
+          let value = this.nowOption.relatedRules[i][keys[j]]
+          if (value === '') {
+            this.$message.error('关联配置不能为空')
+            return;
+          }
+        }
+      }
+
       const properties = this.lf.getProperties(this.nowOption.id)
       properties.relatedRules = this.nowOption.relatedRules
       properties.saveTableId = this.nowOption.saveTableId
@@ -905,6 +956,11 @@ export default {
       this.notPreview()
     },
     saveEliminateRule() {
+      let {column} = this.nowOption.eliminateRule
+      if (column === '') {
+        this.$message.error('数据剔除字段不能为空')
+        return
+      }
       const properties = this.lf.getProperties(this.nowOption.id)
       properties.eliminateRule = this.nowOption.eliminateRule
       this.lf.setProperties(this.nowOption.id, properties)
@@ -1379,7 +1435,7 @@ export default {
                 "start": "123777",
                 "filterRule": " == ",
                 "column": "1",
-                "type": "and"
+                "type": " && "
               }
             ]
           },
@@ -1415,7 +1471,7 @@ export default {
                 "start": "123",
                 "filterRule": ".includes",
                 "column": "name",
-                "type": "and"
+                "type": " && "
               }
             ]
           },
@@ -1479,7 +1535,7 @@ export default {
                 "start": "123",
                 "filterRule": " == ",
                 "column": "模型名称",
-                "type": "and"
+                "type": " && "
               }
             ]
           },
@@ -1501,7 +1557,7 @@ export default {
                 "start": "女",
                 "filterRule": " == ",
                 "column": "萨达",
-                "type": "and"
+                "type": " && "
               }
             ]
           },
