@@ -577,14 +577,14 @@
                 {{ item }}
               </a-select-option>
             </a-select>
-<!--            <a-select-->
-<!--                :default-value="rowItem.originDateRule !== '' ? dateConfig.dateItem.find(obj => obj.value === rowItem.originDateRule).desc : '请选择原格式'"-->
-<!--                style="width: 300px;margin-left: 10px">-->
-<!--              <a-select-option v-for="(item, index) in dateConfig.dateItem" :key="index" :value="index"-->
-<!--                               @click="handleDateRuleChange(rowIndex, 'originDateRule', item.value)">-->
-<!--                {{ item.desc }}-->
-<!--              </a-select-option>-->
-<!--            </a-select>-->
+            <!--            <a-select-->
+            <!--                :default-value="rowItem.originDateRule !== '' ? dateConfig.dateItem.find(obj => obj.value === rowItem.originDateRule).desc : '请选择原格式'"-->
+            <!--                style="width: 300px;margin-left: 10px">-->
+            <!--              <a-select-option v-for="(item, index) in dateConfig.dateItem" :key="index" :value="index"-->
+            <!--                               @click="handleDateRuleChange(rowIndex, 'originDateRule', item.value)">-->
+            <!--                {{ item.desc }}-->
+            <!--              </a-select-option>-->
+            <!--            </a-select>-->
             <a-select
                 :default-value="rowItem.newDateRule !== '' ? dateConfig.dateItem.find(obj => obj.value === rowItem.newDateRule).desc : '请选择转换后格式'"
                 style="width: 300px;margin-left: 10px">
@@ -681,7 +681,8 @@
           <a-button style="margin-left: 10px" v-show="nowOption.preview" @click="nowOption.preview = false">取消预览
           </a-button>
           <div class="filter-item" v-for="(rowItem, rowIndex) in nowOption.timeCompareRules">
-            <a-select :default-value="rowItem.leftColumn !== '' ? rowItem.leftColumn : '请选择时间比较字段'" style="width: 300px">
+            <a-select :default-value="rowItem.leftColumn !== '' ? rowItem.leftColumn : '请选择时间比较字段'"
+                      style="width: 300px">
               <a-select-option v-for="(item, index) in xlsxData[nowOption.id].columnList" :key="index" :value="item"
                                @click="handleTimeCompareRuleChange(rowIndex, 'leftColumn', item)">
                 {{ item }}
@@ -695,7 +696,8 @@
                 {{ item.desc }}
               </a-select-option>
             </a-select>
-            <a-select :default-value="rowItem.rightColumn !== '' ? rowItem.rightColumn : '请选择时间比较字段'" style="width: 300px;margin-left: 10px">
+            <a-select :default-value="rowItem.rightColumn !== '' ? rowItem.rightColumn : '请选择时间比较字段'"
+                      style="width: 300px;margin-left: 10px">
               <a-select-option v-for="(item, index) in xlsxData[nowOption.id].columnList" :key="index" :value="item"
                                @click="handleTimeCompareRuleChange(rowIndex, 'rightColumn', item)">
                 {{ item }}
@@ -784,6 +786,119 @@
         placement="bottom"
         height="400"
         :closable="true"
+        :visible="draw.nullFill"
+        @close="onClose"
+        :zIndex="10"
+        :destroyOnClose="true"
+    >
+      <p>空值填充配置</p>
+      <div v-if="draw.nullFill && nowOption.id in xlsxData">
+        <div v-if="nowOption.nullFillRules.length !== 0">
+          <a-button @click="saveNullFillRules">保存配置</a-button>
+          <a-button style="margin-left: 10px" v-show="!nowOption.preview" @click="nowOption.preview = true">预览
+          </a-button>
+          <a-button style="margin-left: 10px" v-show="nowOption.preview" @click="nowOption.preview = false">取消预览
+          </a-button>
+          <div class="filter-item" v-for="(rowItem, rowIndex) in nowOption.nullFillRules">
+            <a-select :default-value="rowItem.column !== '' ? rowItem.column : '请选择需要填充的字段'" style="width: 300px">
+              <a-select-option v-for="(item, index) in xlsxData[nowOption.id].columnList" :key="index" :value="item"
+                               @click="handleNullFillRuleChange(rowIndex, 'column', item)">
+                {{ item }}
+              </a-select-option>
+            </a-select>
+            <a-select mode="tags" :default-value="rowItem.conditions !== [] ? rowItem.conditions : '请选择空值条件'"
+                      style="width: 300px;margin-left: 10px" @change="handleNullFillConditionsChange($event, rowIndex)">
+              <a-select-option v-for="(item, index) in nullFillConfig.judgmentBasis" :key="index" :value="item.value">
+                {{ item.desc }}
+              </a-select-option>
+            </a-select>
+            <a-input v-if="rowItem.conditions.indexOf('custom') !== -1" v-model="rowItem.custom"
+                     @input="notPreview"
+                     style="width: 300px; margin-left: 10px" placeholder="请输入要填充的值"/>
+            <a-select
+                :default-value="rowItem.rule !== '' ? rowItem.rule : '请选择填充规则'"
+                style="width: 300px;margin: 0 10px">
+              <a-select-option v-for="(item, index) in nullFillConfig.nullFillItem" :key="index" :value="index"
+                               @click="handleNullFillRuleChange(rowIndex, 'rule', item)">
+                {{ item }}
+              </a-select-option>
+            </a-select>
+            <a-input v-if="rowItem.rule === '统一填充'" v-model="rowItem.fillValue" @input="notPreview"
+                     style="width: 300px; margin-right: 10px" placeholder="请输入统一填充的值"/>
+
+            <a-button style="margin-left: 10px" @click="addNullFillRule" v-if="rowIndex === 0">添加配置</a-button>
+            <a-button style="margin-left: 10px" @click="removeNullFillRule(rowIndex)" v-if="rowIndex !== 0">删除配置
+            </a-button>
+          </div>
+        </div>
+        <div v-if="nowOption.nullFillRules.length === 0">
+          <a-button @click="addNullFillRule">添加配置</a-button>
+        </div>
+
+        <a-row v-if="draw.nullFill && nowOption.id in xlsxData">
+          <p>筛选前</p>
+          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
+            <a-menu slot="overlay">
+              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
+                <a-checkbox :checked="column.show"
+                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
+                  {{ column.title }}
+                </a-checkbox>
+              </a-menu-item>
+            </a-menu>
+            <a-button style="margin-left: 8px"> 筛选列
+              <a-icon type="down"/>
+            </a-button>
+          </a-dropdown>
+          <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
+          <a-table
+              :rowKey="(record,index)=>{return index}"
+              style="margin-top: 10px"
+              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+              :data-source="xlsxData[nowOption.id].data"
+              :pagination="xlsxData[nowOption.id].pagination"
+              bordered
+              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
+          </a-table>
+        </a-row>
+
+        <a-row v-if="draw.nullFill && nowOption.id in xlsxData && nowOption.preview">
+          <p>筛选后</p>
+          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
+            <a-menu slot="overlay">
+              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
+                <a-checkbox :checked="column.show"
+                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
+                  {{ column.title }}
+                </a-checkbox>
+              </a-menu-item>
+            </a-menu>
+            <a-button style="margin-left: 8px"> 筛选列
+              <a-icon type="down"/>
+            </a-button>
+          </a-dropdown>
+          <a-button
+              @click="exportXlsx(nullFillData(nowOption.nullFillRules, xlsxData[nowOption.id].data), '导出结果')"
+              style="margin-left: 10px">导出数据
+          </a-button>
+          <a-table
+              :rowKey="(record,index)=>{return index}"
+              style="margin-top: 10px"
+              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+              :data-source="nullFillData(nowOption.nullFillRules, xlsxData[nowOption.id].data)"
+              :pagination="xlsxData[nowOption.id].pagination"
+              bordered
+              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
+          </a-table>
+        </a-row>
+      </div>
+    </a-drawer>
+
+    <a-drawer
+        :title="config.title"
+        placement="bottom"
+        height="400"
+        :closable="true"
         :visible="draw.finish"
         @close="onClose"
         :zIndex="10"
@@ -845,6 +960,7 @@ export default {
         contentReplace: false,
         date: false,
         timeCompare: false,
+        nullFill: false,
         finish: false,
       },
       nowOption: {
@@ -975,6 +1091,31 @@ export default {
             desc: '或',
             value: ' || '
           }
+        ]
+      },
+      nullFillConfig: {
+        judgmentBasis: [
+          {
+            desc: 'NULL值',
+            value: 'null'
+          },
+          {
+            desc: '字符串长度 < 1',
+            value: 'length'
+          },
+          {
+            desc: '值为NULL字符(不区分大小写)',
+            value: 'nullCase'
+          },
+          {
+            desc: '自定义字符',
+            value: 'custom'
+          },
+        ],
+        nullFillItem: [
+          '统一填充',
+          '均值填充',
+          '众值填充',
         ]
       }
     }
@@ -1465,6 +1606,125 @@ export default {
       this.notPreview()
       this.nowOption.timeCompareRules.splice(rowIndex, 1)
     },
+    saveNullFillRules() {
+      for (let i = 0; i < this.nowOption.nullFillRules.length; i++) {
+        let {column, conditions, rule} = this.nowOption.nullFillRules[i]
+        if (column === '') {
+          this.$message.error('空值字段不能为空')
+          return
+        }
+        if (rule === '') {
+          this.$message.error('填充规则不能为空')
+          return
+        }
+        if (conditions.length === 0) {
+          this.$message.error('空值条件不能为空')
+          return
+        }
+      }
+
+      const properties = this.lf.getProperties(this.nowOption.id)
+      properties.nullFillRules = this.nowOption.nullFillRules
+      this.lf.setProperties(this.nowOption.id, properties)
+      this.saveXlsxData(this.nowOption.id, this.nullFillData(this.nowOption.nullFillRules, this.xlsxData[this.nowOption.id].data))
+    },
+    handleNullFillRuleChange(rowIndex, type, item) {
+      this.notPreview()
+      this.nowOption.nullFillRules[rowIndex][type] = item
+    },
+    addNullFillRule() {
+      this.notPreview()
+      this.nowOption.nullFillRules.push({
+        column: '',
+        conditions: [],
+        custom: '',
+        rule: '',
+        fillValue: ''
+      })
+    },
+    removeNullFillRule(rowIndex) {
+      this.notPreview()
+      this.nowOption.nullFillRules.splice(rowIndex, 1)
+    },
+    nullFillData(nullFillRules, dataList) {
+      let list = [...dataList]
+
+      if (nullFillRules.length > 0) {
+        for (let i = 0; i < nullFillRules.length; i++) {
+          let evalString = ''
+
+          for (let j = 0; j < nullFillRules[i].conditions.length; j++) {
+            let rule = nullFillRules[i].conditions[j]
+            if (j !== 0) {
+              evalString += ` || data['${nullFillRules[i].column}']`
+            } else {
+              evalString += `data['${nullFillRules[i].column}']`
+            }
+            if (rule === 'null') {
+              evalString += ` === null`
+            } else if (rule === 'length') {
+              evalString += `.length === 0`
+            } else if (rule === 'nullCase') {
+              evalString += `.toString().toLowerCase() === 'null'`
+            } else if (rule === 'custom') {
+              evalString += `.toString() === '${nullFillRules[i].custom}'`
+            }
+          }
+
+          if (nullFillRules[i].rule === '统一填充') {
+            evalString += ` ? data['${nullFillRules[i].column}'] = '${nullFillRules[i].fillValue}' : true`
+          } else if (nullFillRules[i].rule === '均值填充') {
+            let total = 0
+            let flag = false
+            for (let j = 0; j < list.length; j++) {
+              if (list[j][nullFillRules[i].column] instanceof Number) {
+                total += list[j][nullFillRules[i].column]
+              } else {
+                flag = true
+                break
+              }
+            }
+            if (flag) {
+              evalString += ` ? true : true`
+            } else {
+              let avg = total / list.length
+              evalString += ` ? data['${nullFillRules[i].column}'] = ${avg} : true`
+            }
+          } else if (nullFillRules[i].rule === '众值填充') {
+            let obj = {}
+
+            list.map(data => {
+              if (data[nullFillRules[i].column] in obj) {
+                obj[data[nullFillRules[i].column]] += 1
+              } else {
+                obj[data[nullFillRules[i].column]] = 1
+              }
+            })
+
+            let keys = Object.keys(obj);
+            let sortKeys = keys.sort(function(a,b){
+              return obj[b] - obj[a];
+            })
+
+            evalString += ` ? data['${nullFillRules[i].column}'] = '${sortKeys[0]}' : true`
+
+          }
+
+          list = list.map(result => {
+            let data = Object.assign({}, result)
+            eval(evalString)
+            return data
+          })
+        }
+
+      }
+
+      return list
+    },
+    handleNullFillConditionsChange(value, rowIndex) {
+      this.notPreview()
+      this.nowOption.nullFillRules[rowIndex].conditions = value
+    },
     saveXlsxData(nodeId, dataList) {
       this.$set(this.xlsxData[nodeId], 'data', dataList)
     },
@@ -1527,6 +1787,8 @@ export default {
           resultData = this.dateData(properties.dateRules, xlsxData[inComingNodes[0].id].data)
         } else if (properties.type === 'timeCompare') {
           resultData = this.timeCompareData(properties.timeCompareRules, xlsxData[inComingNodes[0].id].data)
+        } else if (properties.type === 'nullFill') {
+          resultData = this.nullFillData(properties.nullFillRules, xlsxData[inComingNodes[0].id].data)
         }
 
         const data = Object.assign({}, this.xlsxData[inComingNodes[0].id])
@@ -1772,6 +2034,16 @@ export default {
         }
       },
       {
+        type: 'rect',
+        label: '空值填充',
+        text: '空值填充',
+        icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAEFVwZaAAAABGdBTUEAALGPC/xhBQAAAqlJREFUOBF9VM9rE0EUfrMJNUKLihGbpLGtaCOIR8VjQMGDePCgCCIiCNqzCAp2MyYUCXhUtF5E0D+g1t48qAd7CCLqQUQKEWkStcEfVGlLdp/fm3aW2QQdyLzf33zz5m2IsAZ9XhDpyaaIZkTS4ASzK41TFao88GuJ3hsr2pAbipHxuSYyKRugagICGANkfFnNh3HeE2N0b3nN2cgnpcictw5veJIzxmDamSlxxQZicq/mflxhbaH8BLRbuRwNtZp0JAhoplVRUdzmCe/vO27wFuuA3S5qXruGdboy5/PRGFsbFGKo/haRtQHIrM83bVeTrOgNhZReWaYGnE4aUQgTJNvijJFF4jQ8BxJE5xfKatZWmZcTQ+BVgh7s8SgPlCkcec4mGTmieTP4xd7PcpIEg1TX6gdeLW8rTVMVLVvb7ctXoH0Cydl2QOPJBG21STE5OsnbweVYzAnD3A7PVILuY0yiiyDwSm2g441r6rMSgp6iK42yqroI2QoXeJVeA+YeZSa47gZdXaZWQKTrG93rukk/l2Al6Kzh5AZEl7dDQy+JjgFahQjRopSxPbrbvK7GRe9ePWBo1wcU7sYrFZtavXALwGw/7Dnc50urrHJuTPSoO2IMV3gUQGNg87IbSOIY9BpiT9HV7FCZ94nPXb3MSnwHn/FFFE1vG6DTby+r31KAkUktB3Qf6ikUPWxW1BkXSPQeMHHiW0+HAd2GelJsZz1OJegCxqzl+CLVHa/IibuHeJ1HAKzhuDR+ymNaRFM+4jU6UWKXorRmbyqkq/D76FffevwdCp+jN3UAN/C9JRVTDuOxC/oh+EdMnqIOrlYteKSfadVRGLJFJPSB/ti/6K8f0CNymg/iH2gO/f0DwE0yjAFO6l8JaR5j0VPwPwfaYHqOqrCI319WzwhwzNW/aQAAAABJRU5ErkJggg==',
+        className: 'import_icon',
+        properties: {
+          type: 'nullFill',
+        }
+      },
+      {
         type: 'circle',
         text: '结束',
         label: '结束节点',
@@ -1855,28 +2127,6 @@ export default {
           }
         },
         {
-          "id": "1c5031cc-7c45-4730-867e-417c6819c793",
-          "type": "rect",
-          "x": 520,
-          "y": 320,
-          "properties": {
-            "type": "dataFilter",
-            "filterRules": [
-              {
-                "start": "123777",
-                "filterRule": " == ",
-                "column": "1",
-                "type": " && "
-              }
-            ]
-          },
-          "text": {
-            "x": 520,
-            "y": 320,
-            "value": "数据过滤"
-          }
-        },
-        {
           "id": "6ed2820c-c5b4-4329-9ceb-7eafc3854910",
           "type": "circle",
           "x": 280,
@@ -1921,17 +2171,17 @@ export default {
             "type": "related",
             "relatedRules": [
               {
-                "1c5031cc-7c45-4730-867e-417c6819c793": "4",
                 "f942f633-2062-4e9c-b4bb-ef23e35f9a14": "name",
                 "6cd67a1c-545b-4ff4-b651-4b4e1563c36d": "模型规则",
+                "57d7e976-0d25-4bff-bd68-6a9c0565c477": "4",
                 "relatedRule": " != "
               }
             ],
-            "saveTableId": "1c5031cc-7c45-4730-867e-417c6819c793",
+            "saveTableId": "57d7e976-0d25-4bff-bd68-6a9c0565c477",
             "tableIds": [
-              "1c5031cc-7c45-4730-867e-417c6819c793",
               "f942f633-2062-4e9c-b4bb-ef23e35f9a14",
-              "6cd67a1c-545b-4ff4-b651-4b4e1563c36d"
+              "6cd67a1c-545b-4ff4-b651-4b4e1563c36d",
+              "57d7e976-0d25-4bff-bd68-6a9c0565c477"
             ]
           },
           "text": {
@@ -2096,6 +2346,31 @@ export default {
             "y": -40,
             "value": "时间比较"
           }
+        },
+        {
+          "id": "57d7e976-0d25-4bff-bd68-6a9c0565c477",
+          "type": "rect",
+          "x": 520,
+          "y": 320,
+          "properties": {
+            "type": "nullFill",
+            "nullFillRules": [
+              {
+                "column": "77",
+                "conditions": [
+                  "custom"
+                ],
+                "custom": "123",
+                "rule": "统一填充",
+                "fillValue": "777"
+              }
+            ]
+          },
+          "text": {
+            "x": 520,
+            "y": 320,
+            "value": "空值填充"
+          }
         }
       ],
       "edges": [
@@ -2125,31 +2400,6 @@ export default {
           ]
         },
         {
-          "id": "f28a8d17-3c53-40f5-8b0e-3c5dc9578255",
-          "type": "polyline",
-          "sourceNodeId": "8ef2fe61-d012-40b5-82e9-3c75c007de52",
-          "targetNodeId": "1c5031cc-7c45-4730-867e-417c6819c793",
-          "startPoint": {
-            "x": 330,
-            "y": 320
-          },
-          "endPoint": {
-            "x": 470,
-            "y": 320
-          },
-          "properties": {},
-          "pointsList": [
-            {
-              "x": 330,
-              "y": 320
-            },
-            {
-              "x": 470,
-              "y": 320
-            }
-          ]
-        },
-        {
           "id": "84fad638-e651-432f-8bc9-d09ce3e14908",
           "type": "polyline",
           "sourceNodeId": "6ed2820c-c5b4-4329-9ceb-7eafc3854910",
@@ -2171,39 +2421,6 @@ export default {
             {
               "x": 470,
               "y": 500
-            }
-          ]
-        },
-        {
-          "id": "8d9b770f-d5e9-4e9c-a978-e1967e46ccff",
-          "type": "polyline",
-          "sourceNodeId": "1c5031cc-7c45-4730-867e-417c6819c793",
-          "targetNodeId": "7a25e0bc-705c-43ad-acfe-2d0ddad5861d",
-          "startPoint": {
-            "x": 570,
-            "y": 320
-          },
-          "endPoint": {
-            "x": 750,
-            "y": 420
-          },
-          "properties": {},
-          "pointsList": [
-            {
-              "x": 570,
-              "y": 320
-            },
-            {
-              "x": 600,
-              "y": 320
-            },
-            {
-              "x": 600,
-              "y": 420
-            },
-            {
-              "x": 750,
-              "y": 420
             }
           ]
         },
@@ -2553,6 +2770,64 @@ export default {
               "y": -40
             }
           ]
+        },
+        {
+          "id": "f3790252-99a1-4c84-89a2-97641b374888",
+          "type": "polyline",
+          "sourceNodeId": "8ef2fe61-d012-40b5-82e9-3c75c007de52",
+          "targetNodeId": "57d7e976-0d25-4bff-bd68-6a9c0565c477",
+          "startPoint": {
+            "x": 330,
+            "y": 320
+          },
+          "endPoint": {
+            "x": 470,
+            "y": 320
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 330,
+              "y": 320
+            },
+            {
+              "x": 470,
+              "y": 320
+            }
+          ]
+        },
+        {
+          "id": "0ea3f5a9-22d5-4cf2-a838-f6fa3f3a85b1",
+          "type": "polyline",
+          "sourceNodeId": "57d7e976-0d25-4bff-bd68-6a9c0565c477",
+          "targetNodeId": "7a25e0bc-705c-43ad-acfe-2d0ddad5861d",
+          "startPoint": {
+            "x": 570,
+            "y": 320
+          },
+          "endPoint": {
+            "x": 750,
+            "y": 420
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 570,
+              "y": 320
+            },
+            {
+              "x": 600,
+              "y": 320
+            },
+            {
+              "x": 600,
+              "y": 420
+            },
+            {
+              "x": 750,
+              "y": 420
+            }
+          ]
         }
       ]
     })
@@ -2613,20 +2888,44 @@ export default {
         }
 
       } else if (type === 'related') {
-        this.$set(this.nowOption, 'tableIds', inComingNodes.sort((a, b) => a.id - b.id).map(data => data.id))
-        this.$set(this.nowOption, 'tableNames', inComingNodes.sort((a, b) => a.id - b.id).map(data => data.text.value))
+        let sortInComingNodes = inComingNodes.sort((a, b) => a.id - b.id)
+        let sortInComingNodeIds = sortInComingNodes.map(data => data.id)
+        this.$set(this.nowOption, 'tableIds', sortInComingNodes.map(data => data.id))
+        this.$set(this.nowOption, 'tableNames', sortInComingNodes.map(data => data.text.value))
 
         if ('relatedRules' in data.data.properties) {
-          this.$set(this.nowOption, 'relatedRules', [...data.data.properties.relatedRules])
+
+          let relatedRules = data.data.properties.relatedRules
+          let resultRelatedRules = []
+          for (let i = 0; i < relatedRules.length; i++) {
+            let keys = Object.keys(relatedRules[i])
+            let flag = true
+            for (let j = 0; j < keys.length; j++) {
+              if (keys[j] !== 'relatedRule' && !(keys[j] in sortInComingNodeIds)) {
+                flag = false
+                break
+              }
+            }
+            if (flag) {
+              resultRelatedRules.push(relatedRules[i])
+            }
+          }
+          this.$set(this.nowOption, 'relatedRules', resultRelatedRules)
         } else {
           this.$set(this.nowOption, 'relatedRules', [])
         }
 
         if ('saveTableId' in data.data.properties) {
-          this.$set(this.nowOption, 'saveTableId', data.data.properties.saveTableId)
-          this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[data.data.properties.saveTableId]))
+          if (data.data.properties.saveTableId in sortInComingNodeIds) {
+            this.$set(this.nowOption, 'saveTableId', data.data.properties.saveTableId)
+            this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[data.data.properties.saveTableId]))
+          } else {
+            this.$set(this.nowOption, 'saveTableId', sortInComingNodeIds[0])
+            this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[sortInComingNodeIds[0]]))
+          }
         } else {
-          this.$set(this.nowOption, 'saveTableId', '')
+          this.$set(this.nowOption, 'saveTableId', sortInComingNodeIds[0])
+          this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[sortInComingNodeIds[0]]))
         }
 
       } else if (type === 'finish') {
@@ -2686,6 +2985,17 @@ export default {
         } else {
           this.$set(this.nowOption, 'timeCompareRules', [])
         }
+      } else if (type === 'nullFill') {
+        for (let i = 0; i < inComingNodes.length; i++) {
+          this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[inComingNodes[i].id]))
+        }
+
+        if ('nullFillRules' in data.data.properties) {
+          this.$set(this.nowOption, 'nullFillRules', [...data.data.properties.nullFillRules])
+        } else {
+          this.$set(this.nowOption, 'nullFillRules', [])
+        }
+
       }
 
       // 导出数据
