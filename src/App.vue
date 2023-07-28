@@ -1015,8 +1015,8 @@ export default {
       })
 
       if ('columnList' in this.nowOption) {
-        for (let i = 0; i < keys.length; i++) {
-          if (this.nowOption.columnList.indexOf(keys[i]) === -1) {
+        for (let i = 0; i < this.nowOption.columnList.length; i++) {
+          if (keys.indexOf(this.nowOption.columnList[i]) === -1) {
             this.$message.error('上传的表数据有误')
             return new Promise((resolve, reject) => reject())
           }
