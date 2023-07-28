@@ -1549,7 +1549,42 @@ export default {
       const wb = utils.book_new();
       utils.book_append_sheet(wb, ws, 'Sheet1');
       writeFile(wb, `${filename}.xlsx`);
-    }
+    },
+    execute(lf) {
+      const uploadNodeIds = []
+      const endNodeIds = lf.getGraphData().nodes.filter((data, index, arr) => {
+        if (data.properties.type !== 'upload') {
+          delete this.xlsxData[data.id]
+        } else {
+          uploadNodeIds.push(data.id)
+        }
+        return lf.getNodeOutgoingNode(data.id).length === 0 && lf.getNodeIncomingNode(data.id) !== 0
+      }).map(data => {
+        return data.id
+      })
+
+      for (let i = 0; i < uploadNodeIds.length; i++) {
+        if (!(uploadNodeIds[i] in this.xlsxData)) {
+          // this.$message.error('请在每个开始节点都上传了数据后再执行流程')
+          // return
+          throw new Error('请在每个开始节点都上传了数据后再执行流程')
+        }
+      }
+
+      if (endNodeIds.length > 1) {
+        // this.$message.error('最多只能同时存在一个最终节点')
+        // return
+        throw new Error('最多只能同时存在一个最终节点')
+      } else if (endNodeIds.length < 1) {
+        // this.$message.error('最少要有一个最终节点')
+        throw new Error('最少要有一个最终节点')
+        // return
+      }
+      for (let i = 0; i < endNodeIds.length; i++) {
+        this.executeFlow(lf, endNodeIds[i], this.xlsxData)
+      }
+      return uploadNodeIds
+    },
   },
   mounted() {
     const lf = new LogicFlow({
@@ -1616,39 +1651,9 @@ export default {
       onClick: (lf, ev) => {
         this.isLoading = true
         try {
-          const uploadNodeIds = []
-          const endNodeIds = lf.getGraphData().nodes.filter((data, index, arr) => {
-            if (data.properties.type !== 'upload') {
-              delete this.xlsxData[data.id]
-            } else {
-              uploadNodeIds.push(data.id)
-            }
-            return lf.getNodeOutgoingNode(data.id).length === 0 && lf.getNodeIncomingNode(data.id) !== 0
-          }).map(data => {
-            return data.id
-          })
-
-          for (let i = 0; i < uploadNodeIds.length; i++) {
-            if (!(uploadNodeIds[i] in this.xlsxData)) {
-              this.$message.error('请在每个开始节点都上传了数据后再执行流程')
-              return
-            }
-          }
-
-          if (endNodeIds.length > 1) {
-            this.$message.error('最多只能同时存在一个最终节点')
-            return
-          } else if (endNodeIds.length < 1) {
-            this.$message.error('最少要有一个最终节点')
-          }
-          for (let i = 0; i < endNodeIds.length; i++) {
-            try {
-              this.executeFlow(lf, endNodeIds[i], this.xlsxData)
-            } catch (e) {
-              this.$message.error('执行出错', e)
-              return
-            }
-          }
+          this.execute(lf)
+        } catch (e) {
+          this.$message.error(`执行出错: ${e.message}`)
         } finally {
           this.isLoading = false
         }
@@ -1662,44 +1667,14 @@ export default {
       onClick: (lf, ev) => {
         this.isLoading = true
         try {
-          const uploadNodeIds = []
-          const endNodeIds = lf.getGraphData().nodes.filter((data, index, arr) => {
-            if (data.properties.type !== 'upload') {
-              delete this.xlsxData[data.id]
-            } else {
-              uploadNodeIds.push(data.id)
-            }
-            return lf.getNodeOutgoingNode(data.id).length === 0 && lf.getNodeIncomingNode(data.id) !== 0
-          }).map(data => {
-            return data.id
-          })
-
-          for (let i = 0; i < uploadNodeIds.length; i++) {
-            if (!(uploadNodeIds[i] in this.xlsxData)) {
-              this.$message.error('请在每个开始节点都上传了数据后再执行流程')
-              return
-            }
-          }
-
-          if (endNodeIds.length > 1) {
-            this.$message.error('最多只能同时存在一个最终节点')
-            return
-          } else if (endNodeIds.length < 1) {
-            this.$message.error('最少要有一个最终节点')
-          }
-          for (let i = 0; i < endNodeIds.length; i++) {
-            try {
-              this.executeFlow(lf, endNodeIds[i], this.xlsxData)
-            } catch (e) {
-              this.$message.error(`执行出错${e}`)
-              return
-            }
-          }
+          let uploadNodeIds = this.execute(lf)
 
           for (let i = 0; i < uploadNodeIds.length; i++) {
             this.saveUploadColumnList(uploadNodeIds[i], this.xlsxData[uploadNodeIds[i]].columnList)
           }
           console.log(lf.getGraphData())
+        } catch (e) {
+          this.$message.error(`执行出错: ${e.message}`)
         } finally {
           this.isLoading = false
         }
