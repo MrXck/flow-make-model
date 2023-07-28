@@ -1273,9 +1273,13 @@ export default {
         }
 
       }
-      list = list.filter((data, index, arr) => {
-        return eval(evalString)
-      })
+      try {
+        list = list.filter((data, index, arr) => {
+          return eval(evalString)
+        })
+      } catch (e) {
+        throw new Error('数据筛选失败 请检查相关配置项')
+      }
       return list
     },
     handleDeduplicateRuleChange(index, item) {
@@ -1314,15 +1318,19 @@ export default {
       }
       if (evalString !== '') {
         let temp = []
-        list = list.filter((data, index, arr) => {
-          let result = eval(evalString)
-          if (temp.indexOf(result) === -1) {
-            temp.push(result)
-            return true
-          } else {
-            return false
-          }
-        })
+        try {
+          list = list.filter((data, index, arr) => {
+            let result = eval(evalString)
+            if (temp.indexOf(result) === -1) {
+              temp.push(result)
+              return true
+            } else {
+              return false
+            }
+          })
+        } catch (e) {
+          throw new Error('数据去重失败 请检查相关配置项')
+        }
       }
       return list
     },
@@ -1384,16 +1392,20 @@ export default {
         return data !== saveTableId && data !== 'relatedRule'
       })
 
-      for (let i = 0; i < relatedRule.length; i++) {
-        let evalString = 'saveTableData'
-        for (let j = 0; j < ids.length; j++) {
-          evalString += ` && this.xlsxData['${ids[j]}'].data.find(obj => obj['${relatedRule[i][ids[j]]}'] == saveTableData) !== undefined`
-        }
+      try {
+        for (let i = 0; i < relatedRule.length; i++) {
+          let evalString = 'saveTableData'
+          for (let j = 0; j < ids.length; j++) {
+            evalString += ` && this.xlsxData['${ids[j]}'].data.find(obj => obj['${relatedRule[i][ids[j]]}'] == saveTableData) !== undefined`
+          }
 
-        list = list.filter((data, index, arr) => {
-          let saveTableData = data[relatedRule[i][saveTableId]]
-          return eval(evalString)
-        })
+          list = list.filter((data, index, arr) => {
+            let saveTableData = data[relatedRule[i][saveTableId]]
+            return eval(evalString)
+          })
+        }
+      } catch (e) {
+        throw new Error('数据关联失败 请检查关联配置项')
       }
 
       return list
@@ -1429,19 +1441,23 @@ export default {
     eliminateData(eliminateRule, dataList) {
       let list = [...dataList]
 
-      list = list.filter((data, index, arr) => {
-        if (eliminateRule.matchCase) {
-          if (eliminateRule.matchEntirety) {
-            return !(data[eliminateRule.column].toString().toLowerCase() === eliminateRule.rule.toLowerCase())
+      try {
+        list = list.filter((data, index, arr) => {
+          if (eliminateRule.matchCase) {
+            if (eliminateRule.matchEntirety) {
+              return !(data[eliminateRule.column].toString().toLowerCase() === eliminateRule.rule.toLowerCase())
+            }
+            return !data[eliminateRule.column].toString().toLowerCase().includes(eliminateRule.rule.toLowerCase())
+          } else {
+            if (eliminateRule.matchEntirety) {
+              return !(data[eliminateRule.column].toString() === eliminateRule.rule)
+            }
+            return !data[eliminateRule.column].toString().includes(eliminateRule.rule)
           }
-          return !data[eliminateRule.column].toString().toLowerCase().includes(eliminateRule.rule.toLowerCase())
-        } else {
-          if (eliminateRule.matchEntirety) {
-            return !(data[eliminateRule.column].toString() === eliminateRule.rule)
-          }
-          return !data[eliminateRule.column].toString().includes(eliminateRule.rule)
-        }
-      })
+        })
+      } catch (e) {
+        throw new Error('数据剔除失败 请检查相关配置项')
+      }
 
       return list
     },
@@ -1472,25 +1488,29 @@ export default {
     },
     contentReplaceData(contentReplaceRule, dataList) {
       let list = [...dataList]
-      list = list.map(data => {
-        const previewData = Object.assign({}, data)
-        let regStr
-        if (contentReplaceRule.matchEntirety) {
-          regStr = `/^${contentReplaceRule.findContent}$/g`
-        } else {
-          regStr = `/${contentReplaceRule.findContent}/g`
-        }
-        if (contentReplaceRule.matchCase) {
-          regStr += 'i'
-        }
-        // if (contentReplaceRule.isReplaceOrigin) {
-        //   data[contentReplaceRule.column] = data[contentReplaceRule.column].toString().replace(eval(regStr), contentReplaceRule.replaceContent)
-        // } else {
-        //   data[contentReplaceRule.newColumn] = data[contentReplaceRule.column].toString().replace(eval(regStr), contentReplaceRule.replaceContent)
-        // }
-        previewData[contentReplaceRule.column] = data[contentReplaceRule.column].toString().replace(eval(regStr), contentReplaceRule.replaceContent)
-        return previewData
-      })
+      try {
+        list = list.map(data => {
+          const previewData = Object.assign({}, data)
+          let regStr
+          if (contentReplaceRule.matchEntirety) {
+            regStr = `/^${contentReplaceRule.findContent}$/g`
+          } else {
+            regStr = `/${contentReplaceRule.findContent}/g`
+          }
+          if (contentReplaceRule.matchCase) {
+            regStr += 'i'
+          }
+          // if (contentReplaceRule.isReplaceOrigin) {
+          //   data[contentReplaceRule.column] = data[contentReplaceRule.column].toString().replace(eval(regStr), contentReplaceRule.replaceContent)
+          // } else {
+          //   data[contentReplaceRule.newColumn] = data[contentReplaceRule.column].toString().replace(eval(regStr), contentReplaceRule.replaceContent)
+          // }
+          previewData[contentReplaceRule.column] = data[contentReplaceRule.column].toString().replace(eval(regStr), contentReplaceRule.replaceContent)
+          return previewData
+        })
+      } catch (e) {
+        throw new Error('内容替换失败 请检查相关配置项')
+      }
       return list
     },
     handleDateRuleChange(rowIndex, type, item) {
@@ -1522,14 +1542,18 @@ export default {
     dateData(dateRules, dataList) {
       let list = [...dataList]
       if (dateRules.length > 0) {
-        list = list.map(data => {
-          let resultData = Object.assign({}, data)
-          for (let i = 0; i < dateRules.length; i++) {
-            let column = dateRules[i].column
-            resultData[column] = dayjs(resultData[column]).format(dateRules[i].newDateRule)
-          }
-          return resultData
-        })
+        try {
+          list = list.map(data => {
+            let resultData = Object.assign({}, data)
+            for (let i = 0; i < dateRules.length; i++) {
+              let column = dateRules[i].column
+              resultData[column] = dayjs(resultData[column]).format(dateRules[i].newDateRule)
+            }
+            return resultData
+          })
+        } catch (e) {
+          throw new Error('日期转换失败 请检查相关配置项')
+        }
       }
       return list
     },
@@ -1572,20 +1596,24 @@ export default {
     timeCompareData(timeCompareRules, dataList) {
       let list = [...dataList]
       if (timeCompareRules.length > 0) {
-        let evalString = ''
-        for (let i = 0; i < timeCompareRules.length; i++) {
-          if (i !== 0) {
-            evalString += `${timeCompareRules[i].type}`
+        try {
+          let evalString = ''
+          for (let i = 0; i < timeCompareRules.length; i++) {
+            if (i !== 0) {
+              evalString += `${timeCompareRules[i].type}`
+            }
+            if (timeCompareRules[i].rule === '!=') {
+              evalString += `!(dayjs(data['${timeCompareRules[i].leftColumn}']).isSame(dayjs(data['${timeCompareRules[i].rightColumn}'])))`
+            } else {
+              evalString += `dayjs(data['${timeCompareRules[i].leftColumn}']).${timeCompareRules[i].rule}(dayjs(data['${timeCompareRules[i].rightColumn}']))`
+            }
           }
-          if (timeCompareRules[i].rule === '!=') {
-            evalString += `!(dayjs(data['${timeCompareRules[i].leftColumn}']).isSame(dayjs(data['${timeCompareRules[i].rightColumn}'])))`
-          } else {
-            evalString += `dayjs(data['${timeCompareRules[i].leftColumn}']).${timeCompareRules[i].rule}(dayjs(data['${timeCompareRules[i].rightColumn}']))`
-          }
+          list = list.filter((data, index, arr) => {
+            return eval(evalString)
+          })
+        } catch (e) {
+          throw new Error('时间比较失败 请检查相关配置项')
         }
-        list = list.filter((data, index, arr) => {
-          return eval(evalString)
-        })
       }
       return list
     },
@@ -1650,71 +1678,75 @@ export default {
       let list = [...dataList]
 
       if (nullFillRules.length > 0) {
-        for (let i = 0; i < nullFillRules.length; i++) {
-          let evalString = ''
+        try {
+          for (let i = 0; i < nullFillRules.length; i++) {
+            let evalString = ''
 
-          for (let j = 0; j < nullFillRules[i].conditions.length; j++) {
-            let rule = nullFillRules[i].conditions[j]
-            if (j !== 0) {
-              evalString += ` || data['${nullFillRules[i].column}']`
-            } else {
-              evalString += `data['${nullFillRules[i].column}']`
-            }
-            if (rule === 'null') {
-              evalString += ` === null`
-            } else if (rule === 'length') {
-              evalString += `.length === 0`
-            } else if (rule === 'nullCase') {
-              evalString += `.toString().toLowerCase() === 'null'`
-            } else if (rule === 'custom') {
-              evalString += `.toString() === '${nullFillRules[i].custom}'`
-            }
-          }
-
-          if (nullFillRules[i].rule === '统一填充') {
-            evalString += ` ? data['${nullFillRules[i].column}'] = '${nullFillRules[i].fillValue}' : true`
-          } else if (nullFillRules[i].rule === '均值填充') {
-            let total = 0
-            let flag = false
-            for (let j = 0; j < list.length; j++) {
-              if (list[j][nullFillRules[i].column] instanceof Number) {
-                total += list[j][nullFillRules[i].column]
+            for (let j = 0; j < nullFillRules[i].conditions.length; j++) {
+              let rule = nullFillRules[i].conditions[j]
+              if (j !== 0) {
+                evalString += ` || data['${nullFillRules[i].column}']`
               } else {
-                flag = true
-                break
+                evalString += `data['${nullFillRules[i].column}']`
+              }
+              if (rule === 'null') {
+                evalString += ` === null`
+              } else if (rule === 'length') {
+                evalString += `.length === 0`
+              } else if (rule === 'nullCase') {
+                evalString += `.toString().toLowerCase() === 'null'`
+              } else if (rule === 'custom') {
+                evalString += `.toString() === '${nullFillRules[i].custom}'`
               }
             }
-            if (flag) {
-              evalString += ` ? true : true`
-            } else {
-              let avg = total / list.length
-              evalString += ` ? data['${nullFillRules[i].column}'] = ${avg} : true`
-            }
-          } else if (nullFillRules[i].rule === '众值填充') {
-            let obj = {}
 
-            list.map(data => {
-              if (data[nullFillRules[i].column] in obj) {
-                obj[data[nullFillRules[i].column]] += 1
-              } else {
-                obj[data[nullFillRules[i].column]] = 1
+            if (nullFillRules[i].rule === '统一填充') {
+              evalString += ` ? data['${nullFillRules[i].column}'] = '${nullFillRules[i].fillValue}' : true`
+            } else if (nullFillRules[i].rule === '均值填充') {
+              let total = 0
+              let flag = false
+              for (let j = 0; j < list.length; j++) {
+                if (list[j][nullFillRules[i].column] instanceof Number) {
+                  total += list[j][nullFillRules[i].column]
+                } else {
+                  flag = true
+                  break
+                }
               }
+              if (flag) {
+                evalString += ` ? true : true`
+              } else {
+                let avg = total / list.length
+                evalString += ` ? data['${nullFillRules[i].column}'] = ${avg} : true`
+              }
+            } else if (nullFillRules[i].rule === '众值填充') {
+              let obj = {}
+
+              list.map(data => {
+                if (data[nullFillRules[i].column] in obj) {
+                  obj[data[nullFillRules[i].column]] += 1
+                } else {
+                  obj[data[nullFillRules[i].column]] = 1
+                }
+              })
+
+              let keys = Object.keys(obj);
+              let sortKeys = keys.sort(function (a, b) {
+                return obj[b] - obj[a];
+              })
+
+              evalString += ` ? data['${nullFillRules[i].column}'] = '${sortKeys[0]}' : true`
+
+            }
+
+            list = list.map(result => {
+              let data = Object.assign({}, result)
+              eval(evalString)
+              return data
             })
-
-            let keys = Object.keys(obj);
-            let sortKeys = keys.sort(function(a,b){
-              return obj[b] - obj[a];
-            })
-
-            evalString += ` ? data['${nullFillRules[i].column}'] = '${sortKeys[0]}' : true`
-
           }
-
-          list = list.map(result => {
-            let data = Object.assign({}, result)
-            eval(evalString)
-            return data
-          })
+        } catch (e) {
+          throw new Error('空值填充失败 请检查相关配置项')
         }
 
       }
