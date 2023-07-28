@@ -667,6 +667,123 @@
         placement="bottom"
         height="400"
         :closable="true"
+        :visible="draw.timeCompare"
+        @close="onClose"
+        :zIndex="10"
+        :destroyOnClose="true"
+    >
+      <p>时间比较配置</p>
+      <div v-if="draw.timeCompare && nowOption.id in xlsxData">
+        <div v-if="nowOption.timeCompareRules.length !== 0">
+          <a-button @click="saveTimeCompareRules">保存配置</a-button>
+          <a-button style="margin-left: 10px" v-show="!nowOption.preview" @click="nowOption.preview = true">预览
+          </a-button>
+          <a-button style="margin-left: 10px" v-show="nowOption.preview" @click="nowOption.preview = false">取消预览
+          </a-button>
+          <div class="filter-item" v-for="(rowItem, rowIndex) in nowOption.timeCompareRules">
+            <a-select :default-value="rowItem.leftColumn !== '' ? rowItem.leftColumn : '请选择时间比较字段'" style="width: 300px">
+              <a-select-option v-for="(item, index) in xlsxData[nowOption.id].columnList" :key="index" :value="item"
+                               @click="handleTimeCompareRuleChange(rowIndex, 'leftColumn', item)">
+                {{ item }}
+              </a-select-option>
+            </a-select>
+            <a-select
+                :default-value="rowItem.rule !== '' ? timeCompareConfig.timeCompareItem.find(obj => obj.value === rowItem.rule).desc : '请选择时间比较规则'"
+                style="width: 300px;margin-left: 10px">
+              <a-select-option v-for="(item, index) in timeCompareConfig.timeCompareItem" :key="index" :value="index"
+                               @click="handleTimeCompareRuleChange(rowIndex, 'rule', item.value)">
+                {{ item.desc }}
+              </a-select-option>
+            </a-select>
+            <a-select :default-value="rowItem.rightColumn !== '' ? rowItem.rightColumn : '请选择时间比较字段'" style="width: 300px;margin-left: 10px">
+              <a-select-option v-for="(item, index) in xlsxData[nowOption.id].columnList" :key="index" :value="item"
+                               @click="handleTimeCompareRuleChange(rowIndex, 'rightColumn', item)">
+                {{ item }}
+              </a-select-option>
+            </a-select>
+            <a-select
+                v-if="rowIndex !== 0"
+                :default-value="rowItem.type !== '' ? timeCompareConfig.timeCompareRelate.find(obj => obj.value === rowItem.type).desc : '请选择与或关系'"
+                style="width: 300px;margin: 0 10px">
+              <a-select-option v-for="(item, index) in timeCompareConfig.timeCompareRelate" :key="index" :value="index"
+                               @click="handleTimeCompareRuleChange(rowIndex, 'type', item.value)">
+                {{ item.desc }}
+              </a-select-option>
+            </a-select>
+
+            <a-button style="margin-left: 10px" @click="addTimeCompareRule" v-if="rowIndex === 0">添加配置</a-button>
+            <a-button style="margin-left: 10px" @click="removeTimeCompareRule(rowIndex)" v-if="rowIndex !== 0">删除配置
+            </a-button>
+          </div>
+        </div>
+        <div v-if="nowOption.timeCompareRules.length === 0">
+          <a-button @click="addTimeCompareRule">添加配置</a-button>
+        </div>
+
+        <a-row v-if="draw.timeCompare && nowOption.id in xlsxData">
+          <p>筛选前</p>
+          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
+            <a-menu slot="overlay">
+              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
+                <a-checkbox :checked="column.show"
+                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
+                  {{ column.title }}
+                </a-checkbox>
+              </a-menu-item>
+            </a-menu>
+            <a-button style="margin-left: 8px"> 筛选列
+              <a-icon type="down"/>
+            </a-button>
+          </a-dropdown>
+          <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
+          <a-table
+              :rowKey="(record,index)=>{return index}"
+              style="margin-top: 10px"
+              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+              :data-source="xlsxData[nowOption.id].data"
+              :pagination="xlsxData[nowOption.id].pagination"
+              bordered
+              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
+          </a-table>
+        </a-row>
+
+        <a-row v-if="draw.timeCompare && nowOption.id in xlsxData && nowOption.preview">
+          <p>筛选后</p>
+          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
+            <a-menu slot="overlay">
+              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
+                <a-checkbox :checked="column.show"
+                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
+                  {{ column.title }}
+                </a-checkbox>
+              </a-menu-item>
+            </a-menu>
+            <a-button style="margin-left: 8px"> 筛选列
+              <a-icon type="down"/>
+            </a-button>
+          </a-dropdown>
+          <a-button
+              @click="exportXlsx(timeCompareData(nowOption.timeCompareRules, xlsxData[nowOption.id].data), '导出结果')"
+              style="margin-left: 10px">导出数据
+          </a-button>
+          <a-table
+              :rowKey="(record,index)=>{return index}"
+              style="margin-top: 10px"
+              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
+              :data-source="timeCompareData(nowOption.timeCompareRules, xlsxData[nowOption.id].data)"
+              :pagination="xlsxData[nowOption.id].pagination"
+              bordered
+              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
+          </a-table>
+        </a-row>
+      </div>
+    </a-drawer>
+
+    <a-drawer
+        :title="config.title"
+        placement="bottom"
+        height="400"
+        :closable="true"
         :visible="draw.finish"
         @close="onClose"
         :zIndex="10"
@@ -709,7 +826,6 @@ import "@logicflow/core/dist/style/index.css"
 import {Control, DndPanel, Menu, SelectionSelect} from '@logicflow/extension'
 import '@logicflow/extension/lib/style/index.css'
 import {read, utils, writeFile} from "xlsx";
-import dayjs from 'dayjs'
 
 export default {
   name: "App",
@@ -728,6 +844,7 @@ export default {
         eliminate: false,
         contentReplace: false,
         date: false,
+        timeCompare: false,
         finish: false,
       },
       nowOption: {
@@ -820,6 +937,44 @@ export default {
             desc: '2023年12月13日 12:12:12',
             value: 'YYYY年MM月DD日 HH:mm:ss'
           },
+        ]
+      },
+      timeCompareConfig: {
+        timeCompareItem: [
+          {
+            desc: '等于',
+            value: 'isSame'
+          },
+          {
+            desc: '不等于',
+            value: '!='
+          },
+          {
+            desc: '大于',
+            value: 'isAfter'
+          },
+          {
+            desc: '小于',
+            value: 'isBefore'
+          },
+          {
+            desc: '大于等于',
+            value: 'isSameOrAfter'
+          },
+          {
+            desc: '小于等于',
+            value: 'isSameOrBefore'
+          },
+        ],
+        timeCompareRelate: [
+          {
+            desc: '与',
+            value: ' && '
+          },
+          {
+            desc: '或',
+            value: ' || '
+          }
         ]
       }
     }
@@ -977,7 +1132,6 @@ export default {
         }
 
       }
-      console.log(evalString)
       list = list.filter((data, index, arr) => {
         return eval(evalString)
       })
@@ -1250,6 +1404,67 @@ export default {
       this.notPreview()
       this.nowOption.dateRules.splice(rowIndex, 1)
     },
+    saveTimeCompareRules() {
+      for (let i = 0; i < this.nowOption.timeCompareRules.length; i++) {
+        let {leftColumn, rightColumn, rule, type} = this.nowOption.timeCompareRules[i]
+
+        if (leftColumn === '' || rightColumn === '') {
+          this.$message.error('时间比较字段不能为空')
+          return
+        }
+
+        if (rule === '') {
+          this.$message.error('时间比较规则不能为空')
+          return
+        }
+
+        if (type === '') {
+          this.$message.error('与或关系不能为空')
+          return
+        }
+      }
+      const properties = this.lf.getProperties(this.nowOption.id)
+      properties.timeCompareRules = this.nowOption.timeCompareRules
+      this.lf.setProperties(this.nowOption.id, properties)
+      this.saveXlsxData(this.nowOption.id, this.timeCompareData(this.nowOption.timeCompareRules, this.xlsxData[this.nowOption.id].data))
+    },
+    timeCompareData(timeCompareRules, dataList) {
+      let list = [...dataList]
+      if (timeCompareRules.length > 0) {
+        let evalString = ''
+        for (let i = 0; i < timeCompareRules.length; i++) {
+          if (i !== 0) {
+            evalString += `${timeCompareRules[i].type}`
+          }
+          if (timeCompareRules[i].rule === '!=') {
+            evalString += `!(dayjs(data['${timeCompareRules[i].leftColumn}']).isSame(dayjs(data['${timeCompareRules[i].rightColumn}'])))`
+          } else {
+            evalString += `dayjs(data['${timeCompareRules[i].leftColumn}']).${timeCompareRules[i].rule}(dayjs(data['${timeCompareRules[i].rightColumn}']))`
+          }
+        }
+        list = list.filter((data, index, arr) => {
+          return eval(evalString)
+        })
+      }
+      return list
+    },
+    handleTimeCompareRuleChange(rowIndex, type, item) {
+      this.notPreview()
+      this.nowOption.timeCompareRules[rowIndex][type] = item
+    },
+    addTimeCompareRule() {
+      this.notPreview()
+      this.nowOption.timeCompareRules.push({
+        leftColumn: '',
+        rule: '',
+        rightColumn: '',
+        type: ' && '
+      })
+    },
+    removeTimeCompareRule(rowIndex) {
+      this.notPreview()
+      this.nowOption.timeCompareRules.splice(rowIndex, 1)
+    },
     saveXlsxData(nodeId, dataList) {
       this.$set(this.xlsxData[nodeId], 'data', dataList)
     },
@@ -1310,6 +1525,8 @@ export default {
           resultData = this.contentReplaceData(properties.contentReplaceRule, xlsxData[inComingNodes[0].id].data)
         } else if (properties.type === 'date') {
           resultData = this.dateData(properties.dateRules, xlsxData[inComingNodes[0].id].data)
+        } else if (properties.type === 'timeCompare') {
+          resultData = this.timeCompareData(properties.timeCompareRules, xlsxData[inComingNodes[0].id].data)
         }
 
         const data = Object.assign({}, this.xlsxData[inComingNodes[0].id])
@@ -1567,6 +1784,16 @@ export default {
         className: 'import_icon',
         properties: {
           type: 'date',
+        }
+      },
+      {
+        type: 'rect',
+        label: '时间比较',
+        text: '时间比较',
+        icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAEFVwZaAAAABGdBTUEAALGPC/xhBQAAAqlJREFUOBF9VM9rE0EUfrMJNUKLihGbpLGtaCOIR8VjQMGDePCgCCIiCNqzCAp2MyYUCXhUtF5E0D+g1t48qAd7CCLqQUQKEWkStcEfVGlLdp/fm3aW2QQdyLzf33zz5m2IsAZ9XhDpyaaIZkTS4ASzK41TFao88GuJ3hsr2pAbipHxuSYyKRugagICGANkfFnNh3HeE2N0b3nN2cgnpcictw5veJIzxmDamSlxxQZicq/mflxhbaH8BLRbuRwNtZp0JAhoplVRUdzmCe/vO27wFuuA3S5qXruGdboy5/PRGFsbFGKo/haRtQHIrM83bVeTrOgNhZReWaYGnE4aUQgTJNvijJFF4jQ8BxJE5xfKatZWmZcTQ+BVgh7s8SgPlCkcec4mGTmieTP4xd7PcpIEg1TX6gdeLW8rTVMVLVvb7ctXoH0Cydl2QOPJBG21STE5OsnbweVYzAnD3A7PVILuY0yiiyDwSm2g441r6rMSgp6iK42yqroI2QoXeJVeA+YeZSa47gZdXaZWQKTrG93rukk/l2Al6Kzh5AZEl7dDQy+JjgFahQjRopSxPbrbvK7GRe9ePWBo1wcU7sYrFZtavXALwGw/7Dnc50urrHJuTPSoO2IMV3gUQGNg87IbSOIY9BpiT9HV7FCZ94nPXb3MSnwHn/FFFE1vG6DTby+r31KAkUktB3Qf6ikUPWxW1BkXSPQeMHHiW0+HAd2GelJsZz1OJegCxqzl+CLVHa/IibuHeJ1HAKzhuDR+ymNaRFM+4jU6UWKXorRmbyqkq/D76FffevwdCp+jN3UAN/C9JRVTDuOxC/oh+EdMnqIOrlYteKSfadVRGLJFJPSB/ti/6K8f0CNymg/iH2gO/f0DwE0yjAFO6l8JaR5j0VPwPwfaYHqOqrCI319WzwhwzNW/aQAAAABJRU5ErkJggg==',
+        className: 'import_icon',
+        properties: {
+          type: 'timeCompare',
         }
       },
       {
@@ -1850,7 +2077,7 @@ export default {
         {
           "id": "39d3b946-13b1-4db3-bde5-438ce36f1e43",
           "type": "rect",
-          "x": 580,
+          "x": 540,
           "y": -40,
           "properties": {
             "type": "date",
@@ -1862,9 +2089,37 @@ export default {
             ]
           },
           "text": {
-            "x": 580,
+            "x": 540,
             "y": -40,
             "value": "日期转换"
+          }
+        },
+        {
+          "id": "cdc05a39-5dd4-4dc3-aa8d-6cd386853ffb",
+          "type": "rect",
+          "x": 680,
+          "y": -40,
+          "properties": {
+            "type": "timeCompare",
+            "timeCompareRules": [
+              {
+                "leftColumn": "时间",
+                "rule": "isSame",
+                "rightColumn": "时间",
+                "type": " && "
+              },
+              {
+                "leftColumn": "时间",
+                "rule": "!=",
+                "rightColumn": "时间",
+                "type": " || "
+              }
+            ]
+          },
+          "text": {
+            "x": 680,
+            "y": -40,
+            "value": "时间比较"
           }
         }
       ],
@@ -2227,7 +2482,7 @@ export default {
             "y": -40
           },
           "endPoint": {
-            "x": 530,
+            "x": 490,
             "y": -40
           },
           "properties": {},
@@ -2237,18 +2492,59 @@ export default {
               "y": -40
             },
             {
-              "x": 530,
+              "x": 490,
               "y": -40
             }
           ]
         },
         {
-          "id": "a46503d6-57fe-4a5c-a618-88aba60a3562",
+          "id": "f4f77b53-408c-4fad-bfb3-a73a3697aac7",
           "type": "polyline",
           "sourceNodeId": "39d3b946-13b1-4db3-bde5-438ce36f1e43",
+          "targetNodeId": "cdc05a39-5dd4-4dc3-aa8d-6cd386853ffb",
+          "startPoint": {
+            "x": 590,
+            "y": -40
+          },
+          "endPoint": {
+            "x": 630,
+            "y": -40
+          },
+          "properties": {},
+          "pointsList": [
+            {
+              "x": 590,
+              "y": -40
+            },
+            {
+              "x": 620,
+              "y": -40
+            },
+            {
+              "x": 620,
+              "y": -40
+            },
+            {
+              "x": 600,
+              "y": -40
+            },
+            {
+              "x": 600,
+              "y": -40
+            },
+            {
+              "x": 630,
+              "y": -40
+            }
+          ]
+        },
+        {
+          "id": "8b20b9c1-795b-4046-b721-9f811f58233f",
+          "type": "polyline",
+          "sourceNodeId": "cdc05a39-5dd4-4dc3-aa8d-6cd386853ffb",
           "targetNodeId": "8d26b58d-b474-443a-a021-bdd045184200",
           "startPoint": {
-            "x": 630,
+            "x": 730,
             "y": -40
           },
           "endPoint": {
@@ -2258,7 +2554,23 @@ export default {
           "properties": {},
           "pointsList": [
             {
-              "x": 630,
+              "x": 730,
+              "y": -40
+            },
+            {
+              "x": 760,
+              "y": -40
+            },
+            {
+              "x": 760,
+              "y": -40
+            },
+            {
+              "x": 720,
+              "y": -40
+            },
+            {
+              "x": 720,
               "y": -40
             },
             {
@@ -2388,6 +2700,16 @@ export default {
           this.$set(this.nowOption, 'dateRules', [...data.data.properties.dateRules])
         } else {
           this.$set(this.nowOption, 'dateRules', [])
+        }
+      } else if (type === 'timeCompare') {
+        for (let i = 0; i < inComingNodes.length; i++) {
+          this.$set(this.xlsxData, data.data.id, Object.assign({}, this.xlsxData[inComingNodes[i].id]))
+        }
+
+        if ('timeCompareRules' in data.data.properties) {
+          this.$set(this.nowOption, 'timeCompareRules', [...data.data.properties.timeCompareRules])
+        } else {
+          this.$set(this.nowOption, 'timeCompareRules', [])
         }
       }
 
