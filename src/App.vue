@@ -1,7 +1,6 @@
 <template>
   <div id="app" style="position: fixed;left: 0;right: 0;top: 0;bottom: 0">
     <a-spin :spinning="isLoading" style="height: 100vh;width: 100vw">
-<!--      <div id="container" style="position: fixed;left: 0;right: 0;top: 0;bottom: 0"></div>-->
       <div id="container" style="height: 100vh"></div>
     </a-spin>
     <a-drawer
@@ -27,28 +26,7 @@
         </a-button>
       </a-upload>
       <a-row v-if="draw.upload && nowOption.id in xlsxData">
-        <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-          <a-menu slot="overlay">
-            <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-              <a-checkbox :checked="column.show"
-                          @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                {{ column.title }}
-              </a-checkbox>
-            </a-menu-item>
-          </a-menu>
-          <a-button style="margin-left: 8px"> 筛选列
-            <a-icon type="down"/>
-          </a-button>
-        </a-dropdown>
-        <a-table
-            :rowKey="(record,index)=>{return index}"
-            style="margin-top: 10px"
-            :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-            :data-source="xlsxData[nowOption.id].data"
-            :pagination="xlsxData[nowOption.id].pagination"
-            bordered
-            @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-        </a-table>
+        <BeforeTable :show-export="false" :node-id="nowOption.id" :xlsxData="xlsxData" />
       </a-row>
     </a-drawer>
 
@@ -109,58 +87,12 @@
 
         <a-row v-if="draw.dataFilter && nowOption.id in xlsxData">
           <p>筛选前</p>
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-            <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-                <a-checkbox :checked="column.show"
-                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                  {{ column.title }}
-                </a-checkbox>
-              </a-menu-item>
-            </a-menu>
-            <a-button style="margin-left: 8px"> 筛选列
-              <a-icon type="down"/>
-            </a-button>
-          </a-dropdown>
-          <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
-          <a-table
-              :rowKey="(record,index)=>{return index}"
-              style="margin-top: 10px"
-              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="xlsxData[nowOption.id].data"
-              :pagination="xlsxData[nowOption.id].pagination"
-              bordered
-              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-          </a-table>
+          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
         </a-row>
 
         <a-row v-if="draw.dataFilter && nowOption.id in xlsxData && nowOption.preview">
           <p>筛选后</p>
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-            <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-                <a-checkbox :checked="column.show"
-                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                  {{ column.title }}
-                </a-checkbox>
-              </a-menu-item>
-            </a-menu>
-            <a-button style="margin-left: 8px"> 筛选列
-              <a-icon type="down"/>
-            </a-button>
-          </a-dropdown>
-          <a-button @click="exportXlsx(filterData(nowOption.filterRules, xlsxData[nowOption.id].data), '导出结果')"
-                    style="margin-left: 10px">导出数据
-          </a-button>
-          <a-table
-              :rowKey="(record,index)=>{return index}"
-              style="margin-top: 10px"
-              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="filterData(nowOption.filterRules, xlsxData[nowOption.id].data)"
-              :pagination="xlsxData[nowOption.id].pagination"
-              bordered
-              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-          </a-table>
+          <AfterTable :handle-function="filterData" :node-id="nowOption.id" :xlsx-data="xlsxData" :rule="nowOption.filterRules" />
         </a-row>
       </div>
     </a-drawer>
@@ -202,59 +134,12 @@
 
         <a-row v-if="draw.deduplicate && nowOption.id in xlsxData">
           <p>筛选前</p>
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-            <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-                <a-checkbox :checked="column.show"
-                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                  {{ column.title }}
-                </a-checkbox>
-              </a-menu-item>
-            </a-menu>
-            <a-button style="margin-left: 8px"> 筛选列
-              <a-icon type="down"/>
-            </a-button>
-          </a-dropdown>
-          <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
-          <a-table
-              :rowKey="(record,index)=>{return index}"
-              style="margin-top: 10px"
-              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="xlsxData[nowOption.id].data"
-              :pagination="xlsxData[nowOption.id].pagination"
-              bordered
-              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-          </a-table>
+          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
         </a-row>
 
         <a-row v-if="draw.deduplicate && nowOption.id in xlsxData && nowOption.preview">
           <p>筛选后</p>
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-            <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-                <a-checkbox :checked="column.show"
-                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                  {{ column.title }}
-                </a-checkbox>
-              </a-menu-item>
-            </a-menu>
-            <a-button style="margin-left: 8px"> 筛选列
-              <a-icon type="down"/>
-            </a-button>
-          </a-dropdown>
-          <a-button
-              @click="exportXlsx(deduplicateData(nowOption.deduplicateRules, xlsxData[nowOption.id].data), '导出结果')"
-              style="margin-left: 10px">导出数据
-          </a-button>
-          <a-table
-              :rowKey="(record,index)=>{return index}"
-              style="margin-top: 10px"
-              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="deduplicateData(nowOption.deduplicateRules, xlsxData[nowOption.id].data)"
-              :pagination="xlsxData[nowOption.id].pagination"
-              bordered
-              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-          </a-table>
+          <AfterTable :handle-function="deduplicateData" :node-id="nowOption.id" :xlsx-data="xlsxData" :rule="nowOption.deduplicateRules" />
         </a-row>
       </div>
     </a-drawer>
@@ -391,59 +276,12 @@
 
         <a-row v-if="draw.eliminate && nowOption.id in xlsxData">
           <p>筛选前</p>
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-            <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-                <a-checkbox :checked="column.show"
-                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                  {{ column.title }}
-                </a-checkbox>
-              </a-menu-item>
-            </a-menu>
-            <a-button style="margin-left: 8px"> 筛选列
-              <a-icon type="down"/>
-            </a-button>
-          </a-dropdown>
-          <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
-          <a-table
-              :rowKey="(record,index)=>{return index}"
-              style="margin-top: 10px"
-              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="xlsxData[nowOption.id].data"
-              :pagination="xlsxData[nowOption.id].pagination"
-              bordered
-              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-          </a-table>
+          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
         </a-row>
 
         <a-row v-if="draw.eliminate && nowOption.id in xlsxData && nowOption.preview">
           <p>筛选后</p>
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-            <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-                <a-checkbox :checked="column.show"
-                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                  {{ column.title }}
-                </a-checkbox>
-              </a-menu-item>
-            </a-menu>
-            <a-button style="margin-left: 8px"> 筛选列
-              <a-icon type="down"/>
-            </a-button>
-          </a-dropdown>
-          <a-button
-              @click="exportXlsx(eliminateData(nowOption.eliminateRule, xlsxData[nowOption.id].data), '导出结果')"
-              style="margin-left: 10px">导出数据
-          </a-button>
-          <a-table
-              :rowKey="(record,index)=>{return index}"
-              style="margin-top: 10px"
-              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="eliminateData(nowOption.eliminateRule, xlsxData[nowOption.id].data)"
-              :pagination="xlsxData[nowOption.id].pagination"
-              bordered
-              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-          </a-table>
+          <AfterTable :handle-function="eliminateData" :node-id="nowOption.id" :xlsx-data="xlsxData" :rule="nowOption.eliminateRule" />
         </a-row>
       </div>
     </a-drawer>
@@ -496,59 +334,12 @@
 
         <a-row v-if="draw.contentReplace && nowOption.id in xlsxData">
           <p>筛选前</p>
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-            <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-                <a-checkbox :checked="column.show"
-                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                  {{ column.title }}
-                </a-checkbox>
-              </a-menu-item>
-            </a-menu>
-            <a-button style="margin-left: 8px"> 筛选列
-              <a-icon type="down"/>
-            </a-button>
-          </a-dropdown>
-          <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
-          <a-table
-              :rowKey="(record,index)=>{return index}"
-              style="margin-top: 10px"
-              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="xlsxData[nowOption.id].data"
-              :pagination="xlsxData[nowOption.id].pagination"
-              bordered
-              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-          </a-table>
+          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
         </a-row>
 
         <a-row v-if="draw.contentReplace && nowOption.id in xlsxData && nowOption.preview">
           <p>筛选后</p>
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-            <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-                <a-checkbox :checked="column.show"
-                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                  {{ column.title }}
-                </a-checkbox>
-              </a-menu-item>
-            </a-menu>
-            <a-button style="margin-left: 8px"> 筛选列
-              <a-icon type="down"/>
-            </a-button>
-          </a-dropdown>
-          <a-button
-              @click="exportXlsx(contentReplaceData(nowOption.contentReplaceRule, xlsxData[nowOption.id].data), '导出结果')"
-              style="margin-left: 10px">导出数据
-          </a-button>
-          <a-table
-              :rowKey="(record,index)=>{return index}"
-              style="margin-top: 10px"
-              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="contentReplaceData(nowOption.contentReplaceRule, xlsxData[nowOption.id].data)"
-              :pagination="xlsxData[nowOption.id].pagination"
-              bordered
-              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-          </a-table>
+          <AfterTable :handle-function="contentReplaceData" :node-id="nowOption.id" :xlsx-data="xlsxData" :rule="nowOption.contentReplaceRule" />
         </a-row>
       </div>
     </a-drawer>
@@ -606,59 +397,12 @@
 
         <a-row v-if="draw.date && nowOption.id in xlsxData">
           <p>筛选前</p>
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-            <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-                <a-checkbox :checked="column.show"
-                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                  {{ column.title }}
-                </a-checkbox>
-              </a-menu-item>
-            </a-menu>
-            <a-button style="margin-left: 8px"> 筛选列
-              <a-icon type="down"/>
-            </a-button>
-          </a-dropdown>
-          <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
-          <a-table
-              :rowKey="(record,index)=>{return index}"
-              style="margin-top: 10px"
-              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="xlsxData[nowOption.id].data"
-              :pagination="xlsxData[nowOption.id].pagination"
-              bordered
-              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-          </a-table>
+          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
         </a-row>
 
         <a-row v-if="draw.date && nowOption.id in xlsxData && nowOption.preview">
           <p>筛选后</p>
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-            <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-                <a-checkbox :checked="column.show"
-                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                  {{ column.title }}
-                </a-checkbox>
-              </a-menu-item>
-            </a-menu>
-            <a-button style="margin-left: 8px"> 筛选列
-              <a-icon type="down"/>
-            </a-button>
-          </a-dropdown>
-          <a-button
-              @click="exportXlsx(dateData(nowOption.dateRules, xlsxData[nowOption.id].data), '导出结果')"
-              style="margin-left: 10px">导出数据
-          </a-button>
-          <a-table
-              :rowKey="(record,index)=>{return index}"
-              style="margin-top: 10px"
-              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="dateData(nowOption.dateRules, xlsxData[nowOption.id].data)"
-              :pagination="xlsxData[nowOption.id].pagination"
-              bordered
-              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-          </a-table>
+          <AfterTable :handle-function="dateData" :node-id="nowOption.id" :xlsx-data="xlsxData" :rule="nowOption.dateRules" />
         </a-row>
       </div>
     </a-drawer>
@@ -725,59 +469,12 @@
 
         <a-row v-if="draw.timeCompare && nowOption.id in xlsxData">
           <p>筛选前</p>
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-            <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-                <a-checkbox :checked="column.show"
-                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                  {{ column.title }}
-                </a-checkbox>
-              </a-menu-item>
-            </a-menu>
-            <a-button style="margin-left: 8px"> 筛选列
-              <a-icon type="down"/>
-            </a-button>
-          </a-dropdown>
-          <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
-          <a-table
-              :rowKey="(record,index)=>{return index}"
-              style="margin-top: 10px"
-              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="xlsxData[nowOption.id].data"
-              :pagination="xlsxData[nowOption.id].pagination"
-              bordered
-              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-          </a-table>
+          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
         </a-row>
 
         <a-row v-if="draw.timeCompare && nowOption.id in xlsxData && nowOption.preview">
           <p>筛选后</p>
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-            <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-                <a-checkbox :checked="column.show"
-                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                  {{ column.title }}
-                </a-checkbox>
-              </a-menu-item>
-            </a-menu>
-            <a-button style="margin-left: 8px"> 筛选列
-              <a-icon type="down"/>
-            </a-button>
-          </a-dropdown>
-          <a-button
-              @click="exportXlsx(timeCompareData(nowOption.timeCompareRules, xlsxData[nowOption.id].data), '导出结果')"
-              style="margin-left: 10px">导出数据
-          </a-button>
-          <a-table
-              :rowKey="(record,index)=>{return index}"
-              style="margin-top: 10px"
-              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="timeCompareData(nowOption.timeCompareRules, xlsxData[nowOption.id].data)"
-              :pagination="xlsxData[nowOption.id].pagination"
-              bordered
-              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-          </a-table>
+          <AfterTable :handle-function="timeCompareData" :node-id="nowOption.id" :xlsx-data="xlsxData" :rule="nowOption.timeCompareRules" />
         </a-row>
       </div>
     </a-drawer>
@@ -838,59 +535,12 @@
 
         <a-row v-if="draw.nullFill && nowOption.id in xlsxData">
           <p>筛选前</p>
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-            <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-                <a-checkbox :checked="column.show"
-                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                  {{ column.title }}
-                </a-checkbox>
-              </a-menu-item>
-            </a-menu>
-            <a-button style="margin-left: 8px"> 筛选列
-              <a-icon type="down"/>
-            </a-button>
-          </a-dropdown>
-          <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
-          <a-table
-              :rowKey="(record,index)=>{return index}"
-              style="margin-top: 10px"
-              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="xlsxData[nowOption.id].data"
-              :pagination="xlsxData[nowOption.id].pagination"
-              bordered
-              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-          </a-table>
+          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
         </a-row>
 
         <a-row v-if="draw.nullFill && nowOption.id in xlsxData && nowOption.preview">
           <p>筛选后</p>
-          <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-            <a-menu slot="overlay">
-              <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-                <a-checkbox :checked="column.show"
-                            @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                  {{ column.title }}
-                </a-checkbox>
-              </a-menu-item>
-            </a-menu>
-            <a-button style="margin-left: 8px"> 筛选列
-              <a-icon type="down"/>
-            </a-button>
-          </a-dropdown>
-          <a-button
-              @click="exportXlsx(nullFillData(nowOption.nullFillRules, xlsxData[nowOption.id].data), '导出结果')"
-              style="margin-left: 10px">导出数据
-          </a-button>
-          <a-table
-              :rowKey="(record,index)=>{return index}"
-              style="margin-top: 10px"
-              :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-              :data-source="nullFillData(nowOption.nullFillRules, xlsxData[nowOption.id].data)"
-              :pagination="xlsxData[nowOption.id].pagination"
-              bordered
-              @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-          </a-table>
+          <AfterTable :handle-function="nullFillData" :node-id="nowOption.id" :xlsx-data="xlsxData" :rule="nowOption.nullFillRules" />
         </a-row>
       </div>
     </a-drawer>
@@ -907,29 +557,7 @@
     >
       <p>流程结束数据</p>
       <a-row v-if="draw.finish && nowOption.id in xlsxData">
-        <a-dropdown style="margin-bottom: 10px;z-index: 999" v-model="xlsxData[nowOption.id].DropdownVisible">
-          <a-menu slot="overlay">
-            <a-menu-item v-for="(column, columnIndex) in xlsxData[nowOption.id].columns" :key="columnIndex">
-              <a-checkbox :checked="column.show"
-                          @change="(e)=>{xlsxData[nowOption.id].columnsCheck(e.target.checked,xlsxData[nowOption.id].columns,columnIndex)}">
-                {{ column.title }}
-              </a-checkbox>
-            </a-menu-item>
-          </a-menu>
-          <a-button style="margin-left: 8px"> 筛选列
-            <a-icon type="down"/>
-          </a-button>
-        </a-dropdown>
-        <a-button @click="exportXlsx(xlsxData[nowOption.id].data, '导出结果')" style="margin-left: 10px">导出数据</a-button>
-        <a-table
-            :rowKey="(record,index)=>{return index}"
-            style="margin-top: 10px"
-            :columns="xlsxData[nowOption.id].columns.filter((col,num)=>{if(col.show){return col}})"
-            :data-source="xlsxData[nowOption.id].data"
-            :pagination="xlsxData[nowOption.id].pagination"
-            bordered
-            @change="(pagination, filters, sorter)=>{xlsxData[nowOption.id].pagination = pagination}">
-        </a-table>
+        <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
       </a-row>
     </a-drawer>
 
@@ -939,7 +567,7 @@
 <script>
 import "@logicflow/core/dist/style/index.css"
 import '@logicflow/extension/lib/style/index.css'
-import {read, utils, writeFile} from "xlsx";
+import BeforeTable from "@/components/BeforeTable";
 import {
   addDateRule,
   addDeduplicateRule,
@@ -971,7 +599,7 @@ import {
   saveEliminateRule,
   saveFilterRules, saveNullFillRules,
   saveRelatedRules,
-  saveTimeCompareRules, saveUploadColumnList,
+  saveTimeCompareRules,
   setContentReplaceType,
   setDataFilterType,
   setDateType,
@@ -985,9 +613,12 @@ import {
   timeCompareData
 } from "@/utils/execute";
 import {initLogicFlow} from "@/utils/LogicFlowConfig";
+import {info} from "@/utils/nodeInfo";
+import AfterTable from "@/components/AfterTable";
 
 export default {
   name: "App",
+  components: {AfterTable, BeforeTable},
   data() {
     return {
       visible: false,
@@ -1311,7 +942,8 @@ export default {
     },
   },
   mounted() {
-    initLogicFlow(this)
+    const node = info
+    initLogicFlow(this, node)
   }
 }
 
