@@ -26,7 +26,7 @@
         </a-button>
       </a-upload>
       <a-row v-if="draw.upload && nowOption.id in xlsxData">
-        <BeforeTable :show-export="false" :node-id="nowOption.id" :xlsxData="xlsxData" />
+        <BeforeTable :show-export="false" :node-id="nowOption.id" :xlsxData="xlsxData"/>
       </a-row>
     </a-drawer>
 
@@ -87,12 +87,13 @@
 
         <a-row v-if="draw.dataFilter && nowOption.id in xlsxData">
           <p>筛选前</p>
-          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
+          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData"/>
         </a-row>
 
         <a-row v-if="draw.dataFilter && nowOption.id in xlsxData && nowOption.preview">
           <p>筛选后</p>
-          <AfterTable :handle-function="filterData" :node-id="nowOption.id" :xlsx-data="xlsxData" :rule="nowOption.filterRules" />
+          <AfterTable :handle-function="filterData" :node-id="nowOption.id" :xlsx-data="xlsxData"
+                      :rule="nowOption.filterRules"/>
         </a-row>
       </div>
     </a-drawer>
@@ -134,12 +135,13 @@
 
         <a-row v-if="draw.deduplicate && nowOption.id in xlsxData">
           <p>筛选前</p>
-          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
+          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData"/>
         </a-row>
 
         <a-row v-if="draw.deduplicate && nowOption.id in xlsxData && nowOption.preview">
           <p>筛选后</p>
-          <AfterTable :handle-function="deduplicateData" :node-id="nowOption.id" :xlsx-data="xlsxData" :rule="nowOption.deduplicateRules" />
+          <AfterTable :handle-function="deduplicateData" :node-id="nowOption.id" :xlsx-data="xlsxData"
+                      :rule="nowOption.deduplicateRules"/>
         </a-row>
       </div>
     </a-drawer>
@@ -276,12 +278,13 @@
 
         <a-row v-if="draw.eliminate && nowOption.id in xlsxData">
           <p>筛选前</p>
-          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
+          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData"/>
         </a-row>
 
         <a-row v-if="draw.eliminate && nowOption.id in xlsxData && nowOption.preview">
           <p>筛选后</p>
-          <AfterTable :handle-function="eliminateData" :node-id="nowOption.id" :xlsx-data="xlsxData" :rule="nowOption.eliminateRule" />
+          <AfterTable :handle-function="eliminateData" :node-id="nowOption.id" :xlsx-data="xlsxData"
+                      :rule="nowOption.eliminateRule"/>
         </a-row>
       </div>
     </a-drawer>
@@ -334,12 +337,13 @@
 
         <a-row v-if="draw.contentReplace && nowOption.id in xlsxData">
           <p>筛选前</p>
-          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
+          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData"/>
         </a-row>
 
         <a-row v-if="draw.contentReplace && nowOption.id in xlsxData && nowOption.preview">
           <p>筛选后</p>
-          <AfterTable :handle-function="contentReplaceData" :node-id="nowOption.id" :xlsx-data="xlsxData" :rule="nowOption.contentReplaceRule" />
+          <AfterTable :handle-function="contentReplaceData" :node-id="nowOption.id" :xlsx-data="xlsxData"
+                      :rule="nowOption.contentReplaceRule"/>
         </a-row>
       </div>
     </a-drawer>
@@ -369,18 +373,18 @@
                 {{ item }}
               </a-select-option>
             </a-select>
-            <!--            <a-select-->
-            <!--                :default-value="rowItem.originDateRule !== '' ? dateConfig.dateItem.find(obj => obj.value === rowItem.originDateRule).desc : '请选择原格式'"-->
-            <!--                style="width: 300px;margin-left: 10px">-->
-            <!--              <a-select-option v-for="(item, index) in dateConfig.dateItem" :key="index" :value="index"-->
-            <!--                               @click="handleDateRuleChange(rowIndex, 'originDateRule', item.value)">-->
-            <!--                {{ item.desc }}-->
-            <!--              </a-select-option>-->
-            <!--            </a-select>-->
             <a-select
-                :default-value="rowItem.newDateRule !== '' ? dateConfig.dateItem.find(obj => obj.value === rowItem.newDateRule).desc : '请选择转换后格式'"
+                :default-value="rowItem.originDateRule !== '' ? dateConfig.beforeDateItem.find(obj => obj.value === rowItem.originDateRule).desc : '请选择原格式'"
                 style="width: 300px;margin-left: 10px">
-              <a-select-option v-for="(item, index) in dateConfig.dateItem" :key="index" :value="index"
+              <a-select-option v-for="(item, index) in dateConfig.beforeDateItem" :key="index" :value="index"
+                               @click="handleDateRuleChange(rowIndex, 'originDateRule', item.value)">
+                {{ item.desc }}
+              </a-select-option>
+            </a-select>
+            <a-select
+                :default-value="rowItem.newDateRule !== '' ? dateConfig.afterDateItem.find(obj => obj.value === rowItem.newDateRule).desc : '请选择转换后格式'"
+                style="width: 300px;margin-left: 10px">
+              <a-select-option v-for="(item, index) in dateConfig.afterDateItem" :key="index" :value="index"
                                @click="handleDateRuleChange(rowIndex, 'newDateRule', item.value)">
                 {{ item.desc }}
               </a-select-option>
@@ -397,12 +401,13 @@
 
         <a-row v-if="draw.date && nowOption.id in xlsxData">
           <p>筛选前</p>
-          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
+          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData"/>
         </a-row>
 
         <a-row v-if="draw.date && nowOption.id in xlsxData && nowOption.preview">
           <p>筛选后</p>
-          <AfterTable :handle-function="dateData" :node-id="nowOption.id" :xlsx-data="xlsxData" :rule="nowOption.dateRules" />
+          <AfterTable :handle-function="dateData" :node-id="nowOption.id" :xlsx-data="xlsxData"
+                      :rule="nowOption.dateRules"/>
         </a-row>
       </div>
     </a-drawer>
@@ -469,12 +474,13 @@
 
         <a-row v-if="draw.timeCompare && nowOption.id in xlsxData">
           <p>筛选前</p>
-          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
+          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData"/>
         </a-row>
 
         <a-row v-if="draw.timeCompare && nowOption.id in xlsxData && nowOption.preview">
           <p>筛选后</p>
-          <AfterTable :handle-function="timeCompareData" :node-id="nowOption.id" :xlsx-data="xlsxData" :rule="nowOption.timeCompareRules" />
+          <AfterTable :handle-function="timeCompareData" :node-id="nowOption.id" :xlsx-data="xlsxData"
+                      :rule="nowOption.timeCompareRules"/>
         </a-row>
       </div>
     </a-drawer>
@@ -535,12 +541,13 @@
 
         <a-row v-if="draw.nullFill && nowOption.id in xlsxData">
           <p>筛选前</p>
-          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
+          <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData"/>
         </a-row>
 
         <a-row v-if="draw.nullFill && nowOption.id in xlsxData && nowOption.preview">
           <p>筛选后</p>
-          <AfterTable :handle-function="nullFillData" :node-id="nowOption.id" :xlsx-data="xlsxData" :rule="nowOption.nullFillRules" />
+          <AfterTable :handle-function="nullFillData" :node-id="nowOption.id" :xlsx-data="xlsxData"
+                      :rule="nowOption.nullFillRules"/>
         </a-row>
       </div>
     </a-drawer>
@@ -557,7 +564,7 @@
     >
       <p>流程结束数据</p>
       <a-row v-if="draw.finish && nowOption.id in xlsxData">
-        <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData" />
+        <BeforeTable :node-id="nowOption.id" :xlsxData="xlsxData"/>
       </a-row>
     </a-drawer>
 
@@ -703,7 +710,7 @@ export default {
         ]
       },
       dateConfig: {
-        dateItem: [
+        afterDateItem: [
           {
             desc: '2023-12-13',
             value: 'YYYY-MM-DD'
@@ -727,6 +734,32 @@ export default {
           {
             desc: '2023年12月13日 12:12:12',
             value: 'YYYY年MM月DD日 HH:mm:ss'
+          },
+        ],
+        beforeDateItem: [
+          {
+            desc: '2023-12-13',
+            value: 'yyyy-MM-dd'
+          },
+          {
+            desc: '2023年12月13日',
+            value: 'yyyy年MM月dd日'
+          },
+          {
+            desc: '2023/12/13',
+            value: 'yyyy/MM/dd'
+          },
+          {
+            desc: '2023/12/13 12:12:12',
+            value: 'yyyy/MM/dd HH:mm:ss'
+          },
+          {
+            desc: '2023-12-13 12:12:12',
+            value: 'yyyy-MM-dd HH:mm:ss'
+          },
+          {
+            desc: '2023年12月13日 12:12:12',
+            value: 'yyyy年MM月dd日 HH:mm:ss'
           },
         ]
       },
@@ -949,11 +982,33 @@ export default {
 
 </script>
 
-<style scoped>
+<style>
 .filter-item {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 10px;
+}
+
+.lf-dndpanel {
+  display: flex;
+  flex-wrap: wrap;
+  position: absolute;
+  margin: 5px;
+  padding: 15px 5px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  border-radius: 5px;
+  overflow: auto;
+  max-width: 226px;
+  max-height: 99vh;
+  writing-mode: vertical-lr;
+  flex-basis: 100px;
+}
+
+.lf-dndpanel > .lf-dnd-item {
+  width: 58px;
+  margin: 2px 4px;
+  writing-mode: horizontal-tb;
 }
 </style>

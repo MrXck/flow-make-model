@@ -1,4 +1,5 @@
 import {read, utils, writeFile} from "xlsx";
+import {parse} from "date-fns";
 
 
 export function notPreview(_this) {
@@ -277,9 +278,9 @@ export function timeCompareData(timeCompareRules, dataList) {
                     evalString += `${timeCompareRules[i].type}`
                 }
                 if (timeCompareRules[i].rule === '!=') {
-                    evalString += `!(dayjs(data['${timeCompareRules[i].leftColumn}']).isSame(dayjs(data['${timeCompareRules[i].rightColumn}'])))`
+                    evalString += `!(dayjs(data['${timeCompareRules[i].leftColumn}'].toString().replace(/[年月日]/g, '')).isSame(dayjs(data['${timeCompareRules[i].rightColumn}'].toString().replace(/[年月日]/g, ''))))`
                 } else {
-                    evalString += `dayjs(data['${timeCompareRules[i].leftColumn}']).${timeCompareRules[i].rule}(dayjs(data['${timeCompareRules[i].rightColumn}']))`
+                    evalString += `dayjs(data['${timeCompareRules[i].leftColumn}'].toString().replace(/[年月日]/g, '')).${timeCompareRules[i].rule}(dayjs(data['${timeCompareRules[i].rightColumn}'].toString().replace(/[年月日]/g, '')))`
                 }
             }
             list = list.filter((data, index, arr) => {
@@ -349,7 +350,8 @@ export function dateData(dateRules, dataList) {
                 let resultData = Object.assign({}, data)
                 for (let i = 0; i < dateRules.length; i++) {
                     let column = dateRules[i].column
-                    resultData[column] = dayjs(resultData[column]).format(dateRules[i].newDateRule)
+                    let result = dayjs(parse(resultData[column], dateRules[i].originDateRule, new Date())).format(dateRules[i].newDateRule)
+                    resultData[column] = result === 'Invalid Date' ? resultData[column] : result
                 }
                 return resultData
             })
@@ -367,15 +369,15 @@ export function handleDateRuleChange(_this, rowIndex, type, item) {
 
 export function saveDateRules(_this) {
     for (let i = 0; i < _this.nowOption.dateRules.length; i++) {
-        let {column, newDateRule} = _this.nowOption.dateRules[i]
+        let {column, originDateRule, newDateRule} = _this.nowOption.dateRules[i]
         if (column === '') {
             _this.$message.error('请选择转换字段')
             return
         }
-        // if (originDateRule === '') {
-        //   _this.$message.error('请选择原格式')
-        //   return
-        // }
+        if (originDateRule === '') {
+          _this.$message.error('请选择原格式')
+          return
+        }
         if (newDateRule === '') {
             _this.$message.error('请选择转换后格式')
             return
@@ -392,7 +394,7 @@ export function addDateRule(_this) {
     notPreview(_this)
     _this.nowOption.dateRules.push({
         column: '',
-        // originDateRule: '',
+        originDateRule: '',
         newDateRule: ''
     })
 }

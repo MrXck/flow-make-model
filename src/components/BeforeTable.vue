@@ -38,7 +38,7 @@ export default {
       require: true
     },
     nodeId: {
-      type: Number,
+      type: String,
       require: true
     },
     showExport: {

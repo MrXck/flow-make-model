@@ -253,7 +253,8 @@ export let info = {
                 "dateRules": [
                     {
                         "column": "时间",
-                        "newDateRule": "YYYY-MM-DD"
+                        "newDateRule": "YYYY-MM-DD",
+                        "originDateRule": "yyyy-MM-dd"
                     }
                 ]
             },
