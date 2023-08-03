@@ -760,9 +760,9 @@ export function saveFilterRules(_this) {
 
 
 export async function beforeUpload(_this, file) {
-    const isExcel = file.type === 'application/vnd.ms-excel' || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.type === 'text/csv'
+    const isExcel = file.type === 'application/vnd.ms-excel' || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     if (!isExcel) {
-        _this.$message.error('只能上传 xlsx xls csv格式')
+        _this.$message.error('只能上传 xlsx xls 格式')
         return new Promise((resolve, reject) => reject())
     }
     const data = await readFile(file)

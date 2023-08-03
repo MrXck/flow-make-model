@@ -17,6 +17,7 @@
           name="file"
           :before-upload="beforeUpload"
           :showUploadList="false"
+          accept=".xlsx, .xls"
       >
         <p>请将所有需要数据移至第一个Sheet再上传</p>
         <p>同时将标题放在第一个Sheet的第一行</p>
